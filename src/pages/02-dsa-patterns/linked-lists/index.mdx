@@ -1,0 +1,64 @@
+# Linked Lists
+
+## Introduction
+Linked lists are linear data structures where each element points to the next.
+
+## Problem Statement
+Arrays can be inefficient when inserting or deleting elements in the middle.
+
+## Why this exists
+Linked lists support efficient insertions and deletions without shifting elements.
+
+## Key concepts
+- **Node**
+- **Head**
+- **Tail**
+- **Next pointer**
+- **Singly vs doubly linked list**
+
+## Common operations
+- Insert at head or tail
+- Delete a node
+- Reverse a list
+- Detect cycles
+
+## Python implementation
+
+```python
+class Node:
+    def __init__(self, value, nxt=None):
+        self.value = value
+        self.next = nxt
+
+class LinkedList:
+    def __init__(self):
+        self.head = None
+
+    def insert_head(self, value):
+        self.head = Node(value, self.head)
+
+    def delete_value(self, value):
+        dummy = Node(None, self.head)
+        prev, curr = dummy, self.head
+        while curr:
+            if curr.value == value:
+                prev.next = curr.next
+                break
+            prev, curr = curr, curr.next
+        self.head = dummy.next
+
+    def reverse(self):
+        prev, curr = None, self.head
+        while curr:
+            curr.next, prev, curr = prev, curr, curr.next
+        self.head = prev
+```
+
+## Interview questions
+- How do you reverse a linked list in place?
+- How do you detect a cycle in a linked list?
+- What is the difference between a singly and doubly linked list?
+
+## Related topics
+- [Arrays & Strings](../arrays-strings)
+- [Two Pointers](../two-pointers)

@@ -1,0 +1,43 @@
+# Hash Tables
+
+## Introduction
+Hash tables provide fast average-time lookup, insertion, and deletion using a key-value mapping.
+
+## Problem Statement
+Linear search is too slow for large collections when you need direct access by key.
+
+## Why this exists
+Hash tables map keys to buckets using a hash function for constant-time access.
+
+## Key concepts
+- **Hash function**
+- **Buckets**
+- **Collision resolution**
+- **Load factor**
+- **Hash table resizing**
+
+## Python example
+
+### Dictionary operations
+```python
+mapping = {}
+mapping['alice'] = 42
+print(mapping.get('alice'))
+
+for key, value in mapping.items():
+    print(key, value)
+```
+
+## Interview questions
+- How are collisions handled in hash tables?
+- What is load factor?
+- Why are hash table operations amortized O(1)?
+
+## Best practices
+- Use built-in dictionaries in Python for associative maps.
+- Avoid expensive hash functions for frequently used keys.
+- Resize or rehash when the load factor grows too large.
+
+## Related topics
+- [Arrays & Strings](../arrays-strings)
+- [Heaps & Priority Queues](../heaps-priority-queues)

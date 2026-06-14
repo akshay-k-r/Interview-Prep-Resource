@@ -1,0 +1,62 @@
+# Dynamic Programming
+
+## Introduction
+Dynamic programming (DP) solves problems by breaking them into overlapping subproblems and reusing results.
+
+## Problem Statement
+Recursive solutions can repeat work and blow up exponentially in time.
+
+## Why this exists
+DP converts exponential recursion into polynomial time through memoization or tabulation.
+
+## Key concepts
+- **Memoization**
+- **Bottom-up table**
+- **State definition**
+- **Optimal substructure**
+- **Overlapping subproblems**
+
+## Python examples
+
+### Fibonacci with memoization
+```python
+from functools import lru_cache
+
+@lru_cache(None)
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+print(fib(10))
+```
+
+### Classic knapsack (bottom-up)
+```python
+def knapsack(weights, values, capacity):
+    n = len(weights)
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for w in range(1, capacity + 1):
+            if weights[i - 1] <= w:
+                dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - weights[i - 1]] + values[i - 1])
+            else:
+                dp[i][w] = dp[i - 1][w]
+    return dp[n][capacity]
+
+print(knapsack([1, 3, 4], [15, 20, 30], 4))
+```
+
+## Interview questions
+- What distinguishes memoization from tabulation?
+- How do you identify DP state variables?
+- When should you use DP instead of recursion?
+
+## Best practices
+- Start with a recursive formulation and add memoization.
+- Define the smallest meaningful state.
+- Optimize space if only the previous row is required.
+
+## Related topics
+- [Greedy Algorithms](../greedy-algorithms)
+- [Backtracking](../backtracking)

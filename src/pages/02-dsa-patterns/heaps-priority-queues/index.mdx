@@ -1,0 +1,52 @@
+# Heaps & Priority Queues
+
+## Introduction
+Heaps and priority queues efficiently support retrieval of the highest- or lowest-priority element.
+
+## Problem Statement
+Many algorithms require repeated access to the smallest or largest item while new items arrive.
+
+## Why this exists
+Heaps provide logarithmic insertion and removal while maintaining order properties.
+
+## Key concepts
+- **Min-heap**
+- **Max-heap**
+- **Heapify**
+- **Priority queue**
+- **Binary heap**
+
+## Python example
+
+### Heap operations
+```python
+import heapq
+
+heap = []
+heapq.heappush(heap, 3)
+heapq.heappush(heap, 1)
+heapq.heappush(heap, 2)
+print(heapq.heappop(heap))
+```
+
+### K smallest elements
+```python
+import heapq
+
+nums = [5, 3, 8, 1, 2]
+print(heapq.nsmallest(3, nums))
+```
+
+## Interview questions
+- How do heaps differ from sorted arrays?
+- What are use cases for priority queues?
+- How do you implement Dijkstra with a heap?
+
+## Best practices
+- Use `heapq` for Python priority queues.
+- Avoid repeated sorting when incremental ordering suffices.
+- Keep heap operations efficient by using tuples for compound priorities.
+
+## Related topics
+- [Stacks & Queues](../stacks-queues)
+- [Graphs](../trees-graphs)

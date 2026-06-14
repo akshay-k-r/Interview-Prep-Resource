@@ -1,0 +1,49 @@
+# Stacks & Queues
+
+## Introduction
+Stacks and queues are abstract data types used for last-in-first-out and first-in-first-out processing.
+
+## Problem Statement
+Choosing the appropriate access pattern is key for expression evaluation, scheduling, and traversal.
+
+## Why this exists
+Stacks model nested behavior; queues model ordered processing.
+
+## Key concepts
+- **Push / pop**
+- **Enqueue / dequeue**
+- **LIFO**
+- **FIFO**
+- **Deque**
+
+## Python example
+
+### Stack using list
+```python
+stack = []
+stack.append(1)
+stack.append(2)
+print(stack.pop())
+```
+
+### Queue using deque
+```python
+from collections import deque
+queue = deque([1, 2, 3])
+queue.append(4)
+print(queue.popleft())
+```
+
+## Interview questions
+- When should you use a stack instead of a queue?
+- How do you implement a queue with two stacks?
+- What is a monotonic stack?
+
+## Best practices
+- Use `deque` for efficient queue operations in Python.
+- Keep stack usage clear for nested or recursive workflows.
+- Avoid using lists as queues when performance matters.
+
+## Related topics
+- [Arrays & Strings](../arrays-strings)
+- [Heaps & Priority Queues](../heaps-priority-queues)

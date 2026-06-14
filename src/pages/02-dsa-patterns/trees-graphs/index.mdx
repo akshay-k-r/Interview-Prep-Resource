@@ -1,0 +1,76 @@
+# Trees & Graphs
+
+## Introduction
+Trees and graphs are non-linear data structures used to model hierarchical and network relationships.
+
+## Problem Statement
+Many problems require traversing relationships, finding shortest paths, or exploring connected components.
+
+## Why this exists
+Trees and graphs represent structured data such as file systems, dependency graphs, and social networks.
+
+## Key concepts
+- **Tree traversal**
+- **Graph traversal**
+- **BFS / DFS**
+- **Cycles**
+- **Weighted edges**
+
+## Python examples
+
+### Breadth-first search (BFS)
+```python
+from collections import deque
+
+graph = {
+    'A': ['B', 'C'],
+    'B': ['D', 'E'],
+    'C': ['F'],
+    'D': [],
+    'E': [],
+    'F': []
+}
+
+def bfs(start):
+    queue = deque([start])
+    visited = set([start])
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+    return order
+
+print(bfs('A'))
+```
+
+### Depth-first search (DFS)
+```python
+def dfs(node, visited=None):
+    if visited is None:
+        visited = set()
+    visited.add(node)
+    for neighbor in graph[node]:
+        if neighbor not in visited:
+            dfs(neighbor, visited)
+    return visited
+
+print(dfs('A'))
+```
+
+## Interview questions
+- What is the difference between BFS and DFS?
+- How do you detect a cycle in a directed graph?
+- What is the height of a binary tree?
+
+## Best practices
+- Choose BFS for shortest path in unweighted graphs.
+- Use recursion or an explicit stack for DFS.
+- Track visited nodes to avoid infinite loops.
+
+## Related topics
+- [Arrays & Strings](../arrays-strings)
+- [Dynamic Programming](../dynamic-programming)

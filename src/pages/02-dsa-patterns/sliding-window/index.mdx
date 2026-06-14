@@ -1,0 +1,50 @@
+# Sliding Window
+
+## Introduction
+The sliding window pattern processes contiguous subarrays efficiently by expanding and contracting boundaries.
+
+## Problem Statement
+Brute-force window checks are often O(n²) and too slow for large arrays.
+
+## Why this exists
+Sliding window enables linear-time solutions for subarray and substring problems.
+
+## Key concepts
+- **Fixed window**
+- **Variable window**
+- **Window expansion**
+- **Window contraction**
+- **State tracking**
+
+## Python example
+
+### Longest substring with unique characters
+```python
+def length_of_longest_substring(s):
+    last_seen = {}
+    start = 0
+    max_len = 0
+
+    for i, ch in enumerate(s):
+        if ch in last_seen and last_seen[ch] >= start:
+            start = last_seen[ch] + 1
+        last_seen[ch] = i
+        max_len = max(max_len, i - start + 1)
+
+    return max_len
+
+print(length_of_longest_substring("abcabcbb"))
+```
+
+## Interview questions
+- When should you use a sliding window?
+- How do you maintain the window state?
+- What is the difference between fixed and dynamic windows?
+
+## Best practices
+- Track exactly the information needed for the window.
+- Move the right pointer forward and shrink left when conditions change.
+- Avoid recomputing window statistics from scratch.
+
+## Related topics
+- [Two Pointers](../two-pointers)

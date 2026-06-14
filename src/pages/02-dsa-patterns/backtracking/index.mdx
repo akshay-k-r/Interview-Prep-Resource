@@ -1,0 +1,50 @@
+# Backtracking
+
+## Introduction
+Backtracking explores options recursively and abandons paths that cannot lead to a valid solution.
+
+## Problem Statement
+Many search problems require enumerating combinations or permutations under constraints.
+
+## Why this exists
+Backtracking systematically finds valid solutions while pruning invalid branches.
+
+## Key concepts
+- **Search tree**
+- **Constraint pruning**
+- **Recursive exploration**
+- **Branch and bound**
+- **Permutation generation**
+
+## Python example
+
+### Generate subsets
+```python
+def subsets(nums):
+    result = []
+
+    def backtrack(start, path):
+        result.append(path[:])
+        for i in range(start, len(nums)):
+            path.append(nums[i])
+            backtrack(i + 1, path)
+            path.pop()
+
+    backtrack(0, [])
+    return result
+
+print(subsets([1, 2, 3]))
+```
+
+## Interview questions
+- How does backtracking differ from brute force?
+- What is pruning and why is it important?
+- How do you generate permutations using backtracking?
+
+## Best practices
+- Use early pruning when constraints fail.
+- Keep recursion depth manageable.
+- Build solutions incrementally and undo changes cleanly.
+
+## Related topics
+- [Dynamic Programming](../dynamic-programming)

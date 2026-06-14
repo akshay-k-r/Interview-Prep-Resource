@@ -1,0 +1,67 @@
+# Arrays & Strings
+
+## Introduction
+Arrays and strings are the foundation of many interview problems and real-world algorithms.
+
+## Problem Statement
+Many problems involve manipulating indexed collections or parsing textual input efficiently.
+
+## Why this exists
+Arrays and strings provide predictable memory layout and direct access patterns.
+
+## Key concepts
+- Indexing and slicing
+- Two-pointer techniques
+- In-place modification
+- Immutable vs mutable strings
+- Character encoding
+
+## Typical problems
+- Reverse a string
+- Find duplicates in an array
+- Subarray sum
+- Longest palindrome substring
+- String matching
+
+## Python examples
+
+### Reverse a string in place
+```python
+s = list("hello")
+i, j = 0, len(s) - 1
+while i < j:
+    s[i], s[j] = s[j], s[i]
+    i += 1
+    j -= 1
+print("".join(s))
+```
+
+### Two-pointer subarray sum
+```python
+def has_pair_with_sum(nums, target):
+    nums.sort()
+    left, right = 0, len(nums) - 1
+    while left < right:
+        current = nums[left] + nums[right]
+        if current == target:
+            return True
+        if current < target:
+            left += 1
+        else:
+            right -= 1
+    return False
+```
+
+## Interview questions
+- How do you reverse a string in place?
+- How do you find the first non-repeating character in a string?
+- What is the difference between a list and a string in Python?
+
+## Best practices
+- Prefer built-in methods for simple string operations.
+- Avoid repeated string concatenation in loops.
+- Watch for off-by-one errors when using indices.
+
+## Related patterns
+- [Two Pointers](../two-pointers)
+- [Sliding Window](../sliding-window)

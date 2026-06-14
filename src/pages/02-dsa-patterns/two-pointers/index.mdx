@@ -1,0 +1,64 @@
+# Two Pointers
+
+## Introduction
+The two pointers pattern uses two indices to traverse data from opposite ends or the same direction.
+
+## Problem Statement
+Many array problems require comparing or aggregating elements while maintaining a range.
+
+## Why this exists
+Two pointers can reduce time complexity to linear for problems involving pairs or subarrays.
+
+## Key concepts
+- **Left and right pointers**
+- **Opposite direction**
+- **Same direction**
+- **Window tracking**
+- **Sorted input**
+
+## Python examples
+
+### Pair with target sum
+```python
+def has_pair(nums, target):
+    nums.sort()
+    left, right = 0, len(nums) - 1
+    while left < right:
+        s = nums[left] + nums[right]
+        if s == target:
+            return True
+        if s < target:
+            left += 1
+        else:
+            right -= 1
+    return False
+
+print(has_pair([2, 7, 11, 15], 9))
+```
+
+### Remove duplicates from sorted array
+```python
+def remove_duplicates(nums):
+    write = 1
+    for read in range(1, len(nums)):
+        if nums[read] != nums[read - 1]:
+            nums[write] = nums[read]
+            write += 1
+    return write
+
+print(remove_duplicates([1,1,2,2,3]))
+```
+
+## Interview questions
+- When do you use two pointers?
+- What is the difference between opposite direction and same direction pointers?
+- How do two pointers help with sorted arrays?
+
+## Best practices
+- Sort if the algorithm requires ordering.
+- Maintain pointer invariants clearly.
+- Use two pointers for pair-finding and window shrinking.
+
+## Related topics
+- [Sliding Window](../sliding-window)
+- [Arrays & Strings](../arrays-strings)

@@ -1,0 +1,45 @@
+# Greedy Algorithms
+
+## Introduction
+Greedy algorithms build a solution incrementally by choosing the best option at each step.
+
+## Problem Statement
+Some problems have local choices that lead to global optimum, while others do not.
+
+## Why this exists
+Greedy methods often provide fast, easy-to-reason-about solutions for optimization problems.
+
+## Key concepts
+- **Local optimality**
+- **Greedy choice property**
+- **Proof of correctness**
+- **Interval scheduling**
+- **Coin change**
+
+## Python example
+
+### Interval scheduling
+```python
+intervals = [(1, 4), (2, 3), (3, 5), (4, 6)]
+intervals.sort(key=lambda x: x[1])
+selected = []
+last_end = 0
+for start, end in intervals:
+    if start >= last_end:
+        selected.append((start, end))
+        last_end = end
+print(selected)
+```
+
+## Interview questions
+- What is the greedy choice property?
+- When does greedy fail?
+- Give an example of a problem that is not greedy.
+
+## Best practices
+- Prove or reason why the greedy choice leads to an optimum.
+- Sort or prioritize options before selection.
+- Use greedy when state dependencies are limited.
+
+## Related topics
+- [Dynamic Programming](../dynamic-programming)

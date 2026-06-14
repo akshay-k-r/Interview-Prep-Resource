@@ -1,0 +1,82 @@
+# Synchronization
+
+## Introduction
+Synchronization ensures correct shared access to data when multiple threads or processes execute concurrently.
+
+## Problem Statement
+Without proper synchronization, concurrent access can lead to race conditions, inconsistent state, and hard-to-repeat bugs.
+
+## Why this exists
+Shared resources and parallel execution require coordination to preserve correctness.
+
+## Key concepts
+- **Mutex/lock**
+- **Semaphore**
+- **Barrier**
+- **Atomic operation**
+- **Critical section**
+
+## Python implementation
+
+### Bad implementation
+Two threads increment shared state without synchronization.
+
+```python
+import threading
+
+counter = 0
+
+def worker():
+    global counter
+    for _ in range(1000):
+        counter += 1
+
+threads = [threading.Thread(target=worker) for _ in range(2)]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+print(counter)
+```
+
+### Better implementation
+Use a lock to protect the critical section.
+
+```python
+import threading
+
+counter = 0
+lock = threading.Lock()
+
+def worker():
+    global counter
+    for _ in range(1000):
+        with lock:
+            counter += 1
+
+threads = [threading.Thread(target=worker) for _ in range(2)]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+print(counter)
+```
+
+## Step-by-step explanation
+1. Identify the shared resource.
+2. Use synchronization primitives around accesses.
+3. Keep critical sections small to reduce contention.
+
+## Interview questions
+- What is a race condition?
+- Why use a lock instead of a busy wait?
+- What is lock contention?
+
+## Best practices
+- Use fine-grained locking only when needed.
+- Prefer higher-level synchronization abstractions.
+- Avoid deadlocks by ordering lock acquisition.
+
+## Related topics
+- [Processes & Threads](../processes-threads)
+- [Deadlocks](../deadlocks)

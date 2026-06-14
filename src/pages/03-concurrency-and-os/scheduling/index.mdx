@@ -1,0 +1,49 @@
+# Scheduling
+
+## Introduction
+Scheduling decides which threads or processes run on the CPU and when.
+
+## Problem Statement
+Without proper scheduling, some tasks may starve while others consume too much CPU.
+
+## Why this exists
+Operating systems must share CPU time among multiple tasks fairly and efficiently.
+
+## Key concepts
+- **Preemptive scheduling**
+- **Fairness**
+- **Priority**
+- **Latency**
+- **Throughput**
+
+## Types of schedulers
+- Round robin
+- Priority-based
+- Multi-level feedback queue
+
+## Example
+A simple round-robin scheduler gives each task a time slice.
+
+```python
+from collections import deque
+
+tasks = deque(["A", "B", "C"])
+for _ in range(6):
+    task = tasks.popleft()
+    print(f"Running {task}")
+    tasks.append(task)
+```
+
+## Interview questions
+- What is preemptive scheduling?
+- How do priorities affect scheduling?
+- What is the difference between throughput and latency?
+
+## Best practices
+- Prefer fair scheduling for interactive workloads.
+- Use priority only when necessary.
+- Measure the impact of scheduling policies on workload performance.
+
+## Related topics
+- [Processes & Threads](../processes-threads)
+- [Memory Models](../memory-models)

@@ -1,0 +1,47 @@
+# Memory Models
+
+## Introduction
+A memory model defines how reads and writes to shared memory behave in concurrent systems.
+
+## Problem Statement
+Concurrency bugs can occur when different processors or threads observe memory operations in different orders.
+
+## Why this exists
+To reason about correctness, engineers need a formal model for visibility and ordering of shared memory operations.
+
+## Key concepts
+- **Sequential consistency**
+- **Memory ordering**
+- **Visibility**
+- **Volatile semantics**
+- **Reordering**
+
+## Example
+A simple reordering example shows how a processor may reorder independent writes.
+
+```python
+# Pseudocode concept; Python has strong ordering semantics.
+# Thread 1:
+# x = 1
+# r1 = y
+# Thread 2:
+# y = 1
+# r2 = x
+```
+
+## Explanation
+If the memory model allows reordering, both r1 and r2 may be 0 even though independent writes occurred.
+
+## Interview questions
+- What is sequential consistency?
+- Why do modern CPUs reorder memory operations?
+- What is a data race?
+
+## Best practices
+- Use atomic operations and fences when sharing memory.
+- Avoid relying on thread interleaving.
+- Use higher-level concurrency libraries where possible.
+
+## Related topics
+- [Synchronization](../synchronization)
+- [Processes & Threads](../processes-threads)

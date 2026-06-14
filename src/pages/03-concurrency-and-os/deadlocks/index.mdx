@@ -1,0 +1,65 @@
+# Deadlocks
+
+## Introduction
+A deadlock occurs when two or more threads or processes are each waiting for resources held by the others.
+
+## Problem Statement
+Deadlocks can halt progress and are often difficult to detect and recover from in production.
+
+## Why this exists
+Deadlocks arise when resources are acquired without a consistent ordering and processes wait indefinitely.
+
+## Key concepts
+- **Mutual exclusion**
+- **Hold and wait**
+- **No preemption**
+- **Circular wait**
+
+## Example
+Two threads each hold one lock and attempt to acquire the other.
+
+```python
+import threading
+import time
+
+lock_a = threading.Lock()
+lock_b = threading.Lock()
+
+def worker_a():
+    with lock_a:
+        time.sleep(0.1)
+        with lock_b:
+            print("Worker A acquired both")
+
+def worker_b():
+    with lock_b:
+        time.sleep(0.1)
+        with lock_a:
+            print("Worker B acquired both")
+
+threads = [threading.Thread(target=worker_a), threading.Thread(target=worker_b)]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join(timeout=1)
+print("Done")
+```
+
+## Step-by-step explanation
+1. Two or more threads hold resources.
+2. Each thread waits for the resource held by the other.
+3. None can proceed.
+
+## Interview questions
+- What are the four conditions for deadlock?
+- How can you prevent deadlock?
+- What is deadlock detection?
+
+## Prevention strategies
+- Acquire locks in a consistent order.
+- Use timeouts or try-lock semantics.
+- Reduce lock granularity when possible.
+
+## Related topics
+- [Synchronization](../synchronization)
+- [Processes & Threads](../processes-threads)

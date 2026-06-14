@@ -1,0 +1,40 @@
+# Cache Coherence
+
+## Introduction
+Cache coherence ensures that multiple CPU caches see a consistent view of shared memory.
+
+## Problem Statement
+When multiple cores cache the same memory location, stale values can lead to incorrect behavior.
+
+## Why this exists
+Modern processors use local caches for performance, but those caches must stay coherent when data is shared.
+
+## Key concepts
+- **Write-back cache**
+- **Cache line**
+- **Invalidation**
+- **Coherence protocol**
+- **MESI**
+
+## Example
+A simple protocol invalidates other caches when a core writes to a shared location.
+
+```python
+# Pseudocode for coherence concept
+# Core 1 writes x = 42, invalidates other caches
+# Core 2 reads x, sees updated value
+```
+
+## Interview questions
+- What is cache coherence?
+- Why do processors use cache coherence protocols?
+- What does MESI stand for?
+
+## Best practices
+- Minimize false sharing by aligning shared data carefully.
+- Prefer immutable or thread-local data for concurrent workloads.
+- Use atomic operations when sharing cache-coherent state.
+
+## Related topics
+- [Memory Models](../memory-models)
+- [Processes & Threads](../processes-threads)

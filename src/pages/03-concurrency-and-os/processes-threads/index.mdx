@@ -1,0 +1,48 @@
+# Processes & Threads
+
+## Introduction
+Processes and threads are the building blocks of concurrent execution.
+
+## Problem Statement
+Developers need to understand how work is scheduled, isolated, and synchronized on modern systems.
+
+## Why this exists
+Processes provide isolation, while threads enable lightweight concurrency within a process.
+
+## Key concepts
+- **Process**
+- **Thread**
+- **Context switch**
+- **Shared memory**
+- **Race condition**
+
+## Internal working
+A process has its own memory space, while threads share the process heap and stack segments.
+
+## Python example
+
+```python
+import threading
+
+counter = 0
+
+def worker():
+    global counter
+    for _ in range(1000):
+        counter += 1
+
+threads = [threading.Thread(target=worker) for _ in range(4)]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+print(counter)
+```
+
+## Interview questions
+- What is the difference between a process and a thread?
+- Why do threads share memory?
+- What is a race condition?
+
+## Related topics
+- [Synchronization Primitives](./synchronization)
