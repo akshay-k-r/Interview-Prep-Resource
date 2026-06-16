@@ -18,8 +18,8 @@ Each topic includes:
 - Trade-offs, pros/cons, and common mistakes
 - Interview questions (beginner to staff engineer level)
 - Related topics for cross-reference learning
-
-**Progress:** 58/147+ topics completed (39%) — see `agent-todo.md` for detailed tracking.
+ 
+**Progress:** 50/148 topics completed (34%) — see `agent-todo.md` for detailed tracking.
 
 ---
 
@@ -74,7 +74,6 @@ npm start
 │   │   ├── 04-dsa-patterns/       # Data structures & algorithms (12 topics) ✅
 │   │   ├── 05-concurrency-and-os/ # OS & concurrency (6 topics) ✅
 │   │   ├── 06-behavioral-and-leadership/ # Soft skills (5 topics) ✅
-│   │   └── 01-system-design/      # Legacy system design (35 topics - to migrate)
 │   ├── components/
 │   │   └── Tracker.tsx            # Progress tracker component
 │   ├── styles/
@@ -224,10 +223,10 @@ See `AGENTS.md` for detailed content guidelines.
 
 ## 📊 Progress Tracking
 
-Current completion: **58/147+ topics (39%)**
+Current completion: **50/148 topics (34%)**
 
-- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5), System Design Legacy (35/35)
-- 🚧 **Pending:** Design Patterns (0/23), HLD (0/32), LLD (0/33+)
+- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5)
+- 🚧 **Pending:** Design Patterns (8/23), HLD (19/69), LLD (0/33+)
 
 See `agent-todo.md` for detailed breakdown with status for each topic.
 

@@ -1,0 +1,199 @@
+# Factory Method Pattern
+
+## Introduction
+The Factory Method is a creational design pattern that provides an interface for creating objects in a superclass, but allows subclasses to alter the type of objects that will be created.
+
+## Problem Statement
+Imagine you are creating a logistics management application. Initially, it only handles truck transportation, so most of your code resides in the `Truck` class. 
+Later, your app becomes popular and you need to add sea logistics (`Ship`). Your code is deeply coupled to the `Truck` class. Adding `Ship` would require modifying the entire codebase, heavily relying on brittle `if/else` conditionals everywhere to check which transport type to instantiate.
+
+## Why this exists
+To decouple the exact object creation process from the business logic that uses those objects. It solves the problem of creating objects without specifying the exact class of object that will be created.
+
+## Real-world analogy
+Consider a **Car Manufacturing Plant**. The main company (Creator) decides *when* to build a car and *how* to sell it. However, the exact blueprint of the car is handed down to sub-factories (Concrete Creators). The SUV Factory produces SUVs, and the Sedan Factory produces Sedans. The dealership just asks for a "Car" without caring how the sub-factory built it.
+
+## Definition
+A creational design pattern that defines an interface or abstract class for creating an object, but lets subclasses decide which class to instantiate. Factory Method lets a class defer instantiation to subclasses.
+
+## Key concepts
+- **Creator:** The abstract class or interface declaring the factory method.
+- **Concrete Creator:** Subclasses that override the factory method to return a specific product.
+- **Product:** The common interface for all objects the creator and its subclasses can produce.
+- **Concrete Product:** The specific implementations of the product interface.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+classDiagram
+    class Creator {
+        <<abstract>>
+        +factoryMethod()* Product
+        +deliver()
+    }
+    class RoadLogistics {
+        +factoryMethod() Product
+    }
+    class SeaLogistics {
+        +factoryMethod() Product
+    }
+    class Product {
+        <<interface>>
+        +transport()
+    }
+    class Truck {
+        +transport()
+    }
+    class Ship {
+        +transport()
+    }
+    
+    Creator <|-- RoadLogistics
+    Creator <|-- SeaLogistics
+    Product <|-- Truck
+    Product <|-- Ship
+    RoadLogistics ..> Truck : creates
+    SeaLogistics ..> Ship : creates
+```
+
+## Java implementation
+
+### Bad implementation
+Mixing object instantiation tightly with business logic makes the code rigid and violating the Open/Closed Principle.
+
+```java
+public class Logistics {
+    public void deliver(String type) {
+        if (type.equals("Road")) {
+            Truck truck = new Truck();
+            truck.transport();
+        } else if (type.equals("Sea")) {
+            Ship ship = new Ship();
+            ship.transport();
+        }
+        // Adding new types means modifying this core method
+    }
+}
+```
+
+### Better implementation (Simple Factory)
+A step up is abstracting the `if/else` logic into a separate factory class. This isn't the true *Factory Method Pattern*, but it's a common stepping stone.
+
+```java
+public class SimpleTransportFactory {
+    public static Transport createTransport(String type) {
+        if (type.equals("Road")) return new Truck();
+        if (type.equals("Sea")) return new Ship();
+        throw new IllegalArgumentException("Unknown transport type");
+    }
+}
+```
+
+### Best implementation (Factory Method Pattern)
+Here we use polymorphism to let the subclasses decide what to create.
+
+```java
+// 1. Product Interface
+public interface Transport {
+    void deliver();
+}
+
+// 2. Concrete Products
+public class Truck implements Transport {
+    public void deliver() { System.out.println("Deliver by land in a box."); }
+}
+public class Ship implements Transport {
+    public void deliver() { System.out.println("Deliver by sea in a container."); }
+}
+
+// 3. Creator
+public abstract class Logistics {
+    // The Factory Method
+    public abstract Transport createTransport();
+    
+    // Core business logic relies purely on abstractions
+    public void planDelivery() {
+        Transport transport = createTransport();
+        transport.deliver();
+    }
+}
+
+// 4. Concrete Creators
+public class RoadLogistics extends Logistics {
+    @Override
+    public Transport createTransport() {
+        return new Truck();
+    }
+}
+
+public class SeaLogistics extends Logistics {
+    @Override
+    public Transport createTransport() {
+        return new Ship();
+    }
+}
+```
+
+## Step-by-step explanation
+1. Identify common behaviors across objects you need to create and extract them into a `Product` interface.
+2. Create concrete implementations of this `Product` interface.
+3. Create a `Creator` abstract class (or interface) declaring the `factoryMethod()` which returns the `Product` interface.
+4. Create subclass `ConcreteCreators` extending the `Creator` and override the `factoryMethod()` to return a specific `ConcreteProduct`.
+5. Use the `Creator` classes to handle the core logic, totally agnostic of what specific product was instantiated.
+
+## Multiple real-world examples
+1. **UI Frameworks:** A cross-platform UI framework might have a `Dialog` abstract class. `WindowsDialog` instantiates a `WindowsButton`, while `MacDialog` instantiates a `MacButton`.
+2. **Database Connectors:** An abstract `Database` class has a `createConnection()` method. Subclasses like `MySQLDatabase` and `PostgreSQLDatabase` return their respective connection objects.
+3. **Document Parsers:** A `DocumentProcessor` might have subclasses `XMLProcessor` and `JSONProcessor` which instantiate different parsing engines.
+
+## Pros
+- **Loose Coupling:** The code interacts solely with the `Product` interface, ignoring implementation details.
+- **Single Responsibility Principle:** Object creation code is moved into one specific place in the hierarchy.
+- **Open/Closed Principle:** You can introduce new types of products into the program without breaking existing client code (just add a new Concrete Creator).
+
+## Cons
+- **Class Explosion:** The code can become complicated since you need to introduce an extensive hierarchy of creator subclasses to construct the products.
+- **Overhead:** Sometimes it is overkill if the creation logic is trivial and unlikely to change.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the main difference between Simple Factory and Factory Method?**
+- A: Simple Factory is a single class with a big switch statement. Factory Method relies on an abstract class and polymorphism, deferring object creation to its subclasses.
+
+### Intermediate
+- **Q: How does the Factory Method support the Open/Closed Principle?**
+- A: It allows you to add new Product types by creating new ConcreteCreator subclasses without touching the existing abstract Creator or business logic code.
+
+### Senior
+- **Q: When would you choose an Abstract Factory over a Factory Method?**
+- A: Factory Method creates a *single* object. Abstract Factory creates *families* of related objects. If my code needs to ensure a UI gets both a WindowsButton and WindowsCheckbox together, I use Abstract Factory.
+
+### Staff Engineer
+- **Q: How does Dependency Injection conceptually relate to the Factory pattern? Can they be used together?**
+- A: Modern DI frameworks (like Spring or Guice) act as ultimate "Factories", eliminating the need for boilerplate factory classes in many contexts. However, Factory Methods are still heavily used *within* DI configurations (e.g., Spring's `@Bean` methods acting as factory methods) to handle complex, dynamic initialization logic that the container can't do natively.
+
+## Common mistakes
+- **Forcing the pattern:** Using a Factory Method for every class creation. If the class structure is not going to expand, a simple `new Object()` or Simple Factory is much better.
+- **Violating LSP (Liskov Substitution Principle):** If the client logic needs to cast the returned `Product` interface back to a specific `ConcreteProduct` to access unique methods, the abstraction has failed.
+
+## Best practices
+- Make the factory method parameterized if you want to condense the number of concrete creators.
+- Rely on standard Java 8+ functional interfaces like `Supplier<T>` to act as lightweight factory methods without full class hierarchies.
+
+## When NOT to use
+- For simple objects with minimal initialization logic.
+- When object families are required (use Abstract Factory instead).
+
+## Comparison with similar concepts
+- **Simple Factory:** An idiom (not a true GoF pattern) where a single class builds objects.
+- **Abstract Factory:** Creates entire groups or families of related objects.
+- **Builder:** Focuses on step-by-step construction of a *complex* object.
+
+## Summary
+The Factory Method pattern manages object instantiation by providing an interface for creating objects, leaving the exact choice of class to its subclasses. It promotes loose coupling and clean scalability.
+
+## Related topics
+- Singleton
+- Abstract Factory
+- Builder
