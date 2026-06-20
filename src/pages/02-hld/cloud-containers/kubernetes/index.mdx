@@ -1,0 +1,128 @@
+# Kubernetes (K8s)
+
+## Introduction
+Kubernetes (often abbreviated as K8s) is an open-source container orchestration system originally designed by Google. It automates the deployment, scaling, management, and networking of containerized applications across a cluster of machines.
+
+## Problem Statement
+Docker is fantastic for running a few containers on a single machine. But what if your e-commerce site has 500 microservices running across 50 servers? 
+- If a server crashes, how do you automatically restart its containers on a healthy server?
+- If traffic spikes, how do you automatically spin up more instances of the checkout service?
+- How do these hundreds of containers discover and talk to each other securely?
+Managing this manually with raw Docker is impossible.
+
+## Why this exists
+To provide a highly automated, resilient, and declarative "operating system for the cloud." It ensures that the actual state of your infrastructure perfectly matches your desired state, handling all the scaling, healing, and routing automatically.
+
+## Real-world analogy
+If Docker containers are musicians in an orchestra (each playing their instrument perfectly in isolation), Kubernetes is the **Conductor**. The conductor doesn't play the instruments, but they ensure everyone plays together at the right tempo, brings in more violinists if the music needs to be louder, and points to a backup if a musician gets sick.
+
+## Definition
+Kubernetes is a portable, extensible, open-source platform for managing containerized workloads and services, that facilitates both declarative configuration and automation.
+
+## Key concepts
+- **Cluster:** A set of worker machines, called nodes, that run containerized applications.
+- **Node:** A physical or virtual machine in the cluster.
+- **Pod:** The smallest deployable computing unit in K8s. It encapsulates one or more tightly coupled containers that share storage and network resources.
+- **Control Plane (Master):** The brain of the cluster. It manages the nodes and the pods. Components include the API Server, Scheduler, etcd (key-value store of cluster state), and Controller Manager.
+- **Deployment:** A declarative object that tells K8s how to run your pods, including how many replicas to maintain and how to perform rolling updates.
+- **Service:** An abstract way to expose an application running on a set of Pods as a stable network service (provides a static IP and load balancing).
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    User((Developer)) -->|kubectl apply| API[API Server]
+    
+    subgraph Control Plane (Master Node)
+        API
+        etcd[(etcd)]
+        Sched[Scheduler]
+        CM[Controller Manager]
+        
+        API <--> etcd
+        API <--> Sched
+        API <--> CM
+    end
+    
+    subgraph Worker Node 1
+        Klet1[Kubelet]
+        Kpxy1[Kube-proxy]
+        Pod1[Pod (Container)]
+        Pod2[Pod (Container)]
+        
+        Klet1 --> Pod1
+        Klet1 --> Pod2
+    end
+    
+    subgraph Worker Node 2
+        Klet2[Kubelet]
+        Pod3[Pod (Container)]
+        
+        Klet2 --> Pod3
+    end
+
+    API <--> Klet1
+    API <--> Klet2
+```
+
+## Step-by-step explanation
+1. **Declare State:** A developer writes a YAML file defining the *desired state*: "I want 3 replicas of my web app image, exposing port 80."
+2. **Submit to API:** The developer applies this YAML to the Kubernetes API Server.
+3. **Store State:** The API Server saves this desired state in `etcd`.
+4. **Schedule:** The Scheduler notices that 3 pods need to be created. It analyzes the worker nodes (checking CPU/RAM) and assigns the pods to appropriate nodes.
+5. **Execute:** The Kubelet agent running on the assigned worker nodes sees the instruction and talks to the container runtime (like containerd) to spin up the actual containers.
+6. **Reconcile (Self-Healing):** The Controller Manager constantly loops, comparing the *actual state* to the *desired state*. If a node crashes and takes down 1 pod, the actual state becomes 2 pods. K8s immediately schedules a replacement pod on a healthy node to restore the desired state of 3.
+
+## Multiple real-world examples
+1. **Rolling Deployments:** Releasing v2.0 of an app without downtime. K8s spins up a v2.0 pod, waits for it to become healthy, routes traffic to it, kills a v1.0 pod, and repeats until all pods are updated.
+2. **Horizontal Pod Autoscaling:** K8s monitors CPU usage. If a marketing email causes a traffic spike, K8s automatically scales the pods from 3 to 10. When traffic subsides, it scales back down to 3.
+3. **Service Discovery:** Service A wants to talk to Service B. It doesn't need to know B's IP addresses. It just makes an HTTP request to `http://service-b`. K8s internal DNS resolves it and load-balances the request across all healthy pods of Service B.
+
+## Pros
+- **Self-healing:** Auto-restarts failed containers and replaces dead nodes.
+- **High Availability & Scalability:** Effortlessly scales applications out and in.
+- **Infrastructure as Code:** Everything is defined declaratively in YAML, allowing infrastructure to be version-controlled in Git (GitOps).
+- **Cloud Agnostic:** You can run K8s on AWS (EKS), GCP (GKE), Azure (AKS), or bare metal data centers.
+
+## Cons
+- **Steep Learning Curve:** The ecosystem is incredibly complex with dozens of interacting components and specialized vocabulary.
+- **Overhead:** Running the Control Plane consumes significant CPU and RAM. It is overkill for simple, small-scale applications.
+- **Operational Complexity:** Managing and upgrading a K8s cluster yourself is notoriously difficult (which is why managed services like EKS/GKE are popular).
+
+## Interview questions
+
+### Beginner
+- **Q: What is a Pod in Kubernetes?**
+  - **A:** A Pod is the smallest deployable unit in Kubernetes. It usually contains a single container, but can contain multiple tightly coupled containers (like a main app container and a logging sidecar) that share the same IP address and storage.
+
+### Intermediate
+- **Q: What is the difference between a Deployment and a Service?**
+  - **A:** A Deployment ensures your application is running (it manages the pods, replicas, and updates). A Service provides a stable, persistent IP address and DNS name to access those pods, load-balancing network traffic across them. Without a Service, you wouldn't be able to reliably route traffic to pods, because pods are frequently killed and reborn with new IP addresses.
+
+### Senior
+- **Q: How does Kubernetes handle State and Storage for databases?**
+  - **A:** Containers are ephemeral. To run stateful applications like databases, K8s uses `PersistentVolumes` (PV) and `PersistentVolumeClaims` (PVC). To ensure stable network identities and ordered deployment (e.g., spinning up a Master DB before a Replica DB), K8s uses a `StatefulSet` object instead of a standard `Deployment`.
+
+## Common mistakes
+- **Not setting Resource Limits:** If you don't define CPU and Memory requests/limits in your Pod definitions, a single leaky application can consume 100% of a node's resources, starving and crashing other critical pods.
+- **Using 'latest' image tags:** If a pod crashes and restarts, it will pull the new 'latest' image. This means your production environment might accidentally upgrade itself to a breaking version without you knowing. Always use specific semantic versions (e.g., `image:v1.2.4`).
+
+## Best practices
+- Use Liveness and Readiness Probes. The Readiness probe tells K8s when your app is ready to receive traffic (so it doesn't send traffic while the app is still booting). The Liveness probe tells K8s if your app is frozen/dead so K8s can restart it.
+- Use Namespaces to logically separate environments (e.g., `dev`, `staging`, `prod`) within the same cluster.
+
+## When NOT to use
+- For simple monolithic applications.
+- If you don't have a dedicated DevOps/SRE team. Serverless architectures (like AWS Lambda or Fargate) might be easier and cheaper for smaller teams.
+
+## Comparison with similar concepts
+- **Kubernetes vs Docker Compose:** Docker Compose is for running multi-container apps on a *single* local machine. K8s is for orchestrating containers across a *cluster* of production machines.
+- **Kubernetes vs AWS ECS:** ECS is Amazon's proprietary container orchestrator. It is simpler than K8s but locks you into the AWS ecosystem.
+
+## Summary
+Kubernetes is the undisputed king of container orchestration. While it introduces significant complexity, its ability to provide self-healing, auto-scaling, and declarative infrastructure makes it the ultimate platform for running modern, large-scale, cloud-native microservices.
+
+## Related topics
+- [Containers](../containers)
+- [Docker](../docker)
+- [Microservices Architecture](../../microservices/index)

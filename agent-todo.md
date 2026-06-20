@@ -17,7 +17,7 @@ src/pages/
 
 ---
 
-## COMPLETED SECTIONS ✅ (68/148 - 45%)
+## COMPLETED SECTIONS ✅ (76/148 - 51%)
 
 ### System Design (Legacy) (35/35 - 100%)
 - ✅ Legacy System Design (35 topics - to migrate to HLD)
@@ -86,7 +86,7 @@ src/pages/
 - ✅ Visitor
 - ✅ Interpreter
 
-### HLD - High-Level Design (26/69 - 37%)
+### HLD - High-Level Design (34/69 - 49%)
 
 #### Fundamentals (8/8) (100%)
 - ✅ CAP Theorem
@@ -144,17 +144,17 @@ src/pages/
 - ✅ Observability
 - ✅ Distributed Tracing
 
-#### Security (0/5) (0%)
-- ⏳ OAuth
-- ⏳ JWT
-- ⏳ Authentication
-- ⏳ Authorization
-- ⏳ API Security
+#### Security (5/5) (100%)
+- ✅ OAuth
+- ✅ JWT
+- ✅ Authentication
+- ✅ Authorization
+- ✅ API Security
 
-#### Cloud & Containers (0/3)
-- ⏳ Containers (0%)
-- ⏳ Docker (0%)
-- ⏳ Kubernetes (0%)
+#### Cloud & Containers (3/3) (100%)
+- ✅ Containers
+- ✅ Docker
+- ✅ Kubernetes
 
 #### Case Studies (0/18) (0%)
 - ⏳ URL Shortener / TinyURL
@@ -244,9 +244,9 @@ src/pages/
 | Concurrency & OS | 6 | 6 | ✅ 100% |
 | Behavioral & Leadership | 5 | 5 | ✅ 100% |
 | Design Patterns | 23 | 23 | ✅ 100% |
-| HLD | 42 | 69 | 🚧 60% |
+| HLD | 50 | 69 | 🚧 72% |
 | LLD | 0 | 33 | 🚧 0% |
-| **TOTAL** | **88** | **148** | **59%** |
+| **TOTAL** | **96** | **148** | **64%** |
 
 ---
 
@@ -256,8 +256,6 @@ src/pages/
 1. Create 18 HLD Case Study pages
 
 ### Secondary
-4. Create Security section in HLD (OAuth, JWT, Authentication, Authorization, API Security)
-5. Create Cloud & Containers section in HLD (Containers, Docker, Kubernetes)
 6. Create complete LLD section (OOP, SOLID, Design Principles, UML, Java, Concurrency, Machine Coding)
 
 ---
@@ -306,7 +304,7 @@ Root Navigation (src/pages/_meta.js)
 ## METRICS
 
 - **Total Topics Planned**: 147+
-- **Topics Completed**: 88
-- **Topics Pending**: 59+
-- **Completion Rate**: ~59%
-- **Estimated Additional Pages**: 59+
+- **Topics Completed**: 96
+- **Topics Pending**: 51+
+- **Completion Rate**: ~64%
+- **Estimated Additional Pages**: 51+
