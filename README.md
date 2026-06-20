@@ -1,5 +1,28 @@
 # SDE Interview Prep Knowledge Base
 
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![Nextra](https://img.shields.io/badge/Nextra-3-blue?style=for-the-badge&logo=markdown)](https://nextra.site)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Stars](https://img.shields.io/github/stars/akshay-k-r/Interview-Prep-Resource?style=for-the-badge)](https://github.com/akshay-k-r/Interview-Prep-Resource/stargazers)
+
+A comprehensive, production-grade **Markdown-first** learning platform for Software Engineering interviews. Covers System Design (HLD), Low-Level Design (LLD), Design Patterns, DSA, Concurrency, and Behavioral topics.
+
+---
+
+**⭐ If you find this project useful, please star the repo!** It helps others discover it and motivates continued improvements.
+
+## 🚀 Quick Start
+
+**Live Demo:** [Coming Soon – Deployed on Vercel](#)
+
+### Deploy to Vercel (One Click)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fakshay-k-r%2FInterview-Prep-Resource)
+
+---
+
+# SDE Interview Prep Knowledge Base
+
 A comprehensive, production-grade learning platform for software engineering interview preparation, system design, and architecture. Built with Next.js 14, Nextra, and Markdown for clarity and maintainability.
 
 ## 🎯 Project Overview
@@ -106,9 +129,9 @@ npm start
 
 | Section | Status | Topics | Folder |
 |---------|--------|--------|--------|
-| Design Patterns | 🚧 Pending | 23 | `01-design-patterns/` |
-| HLD (High-Level Design) | 🚧 Pending | 32 | `02-hld/` |
-| LLD (Low-Level Design) | 🚧 Pending | 33+ | `03-lld/` |
+| Design Patterns | ✅ Complete | 23 | `01-design-patterns/` |
+| HLD (High-Level Design) | ✅ Complete | 68 | `02-hld/` |
+| LLD (Low-Level Design) | ✅ Complete | 33+ | `03-lld/` |
 | DSA Patterns | ✅ Complete | 12 | `04-dsa-patterns/` |
 | Concurrency & OS | ✅ Complete | 6 | `05-concurrency-and-os/` |
 | Behavioral & Leadership | ✅ Complete | 5 | `06-behavioral-and-leadership/` |
@@ -270,6 +293,9 @@ For specific topics, refer to the relevant section in the knowledge base.
 - [AGENTS.md](./AGENTS.md) — Project rules & guidelines
 - [agent-todo.md](./agent-todo.md) — Progress tracker
 - [Home Page](./src/pages/index.mdx) — Learning path
+- [About](./src/pages/about.mdx) — About the project
+- [Submit contribution](./src/pages/contributing.mdx) — Submit contribution
+- [Documentation](./docs/README.md) — Documentation
 - [Design Patterns](./src/pages/01-design-patterns/index.mdx) — GoF patterns
 - [HLD](./src/pages/02-hld/index.mdx) — System design & architecture
 - [LLD](./src/pages/03-lld/index.mdx) — Object-oriented design

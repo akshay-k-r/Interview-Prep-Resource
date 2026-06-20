@@ -1,12 +1,21 @@
 {
-  "name": "temp-next",
+  "name": "interview-prep-resource",
   "version": "0.1.0",
   "private": true,
+  "description": "A comprehensive Markdown-first knowledge base for SDE interviews (System Design, LLD, DSA, Concurrency, Behavioral). Built with Next.js 14 + Nextra.",
+  "author": "Akshay Kumar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akshay-k-r/Interview-Prep-Resource.git"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next out"
   },
   "dependencies": {
     "@types/mdx": "^2.0.14",
