@@ -1,0 +1,67 @@
+# Zomato (Restaurant Discovery & Delivery)
+
+## Introduction
+*Note: The food delivery architecture of Zomato is virtually identical to [Swiggy / DoorDash](../swiggy). Refer to that document for the logistics, ordering, and live-tracking architecture.*
+
+This document highlights the unique architectural challenges Zomato faces due to its origins and continued dominance as a **Restaurant Discovery and Review Platform** (similar to Yelp).
+
+## Problem Statement
+Unlike pure delivery apps, Zomato hosts millions of crowdsourced reviews, photos, ratings, and menus for restaurants globally, including those that do not offer delivery. Serving this massive volume of unstructured UGC (User Generated Content) and providing hyper-relevant, personalized search results requires a distinct architectural approach.
+
+## Key Differences & Focus Areas
+
+### 1. The Discovery & Search Engine
+Zomato's primary value proposition is discovery ("Where should I eat tonight?").
+- **Complex Querying:** Users search by location, cuisine, cost, ratings, specific dishes, or attributes ("Outdoor seating", "Pet friendly").
+- **Architecture:** Zomato relies extraordinarily heavily on **Elasticsearch**. Every restaurant's metadata, tags, aggregated ratings, and menu items are flattened into JSON documents and indexed in an Elasticsearch cluster.
+- **Personalization:** Elasticsearch allows boosting specific search results based on user history. If the system knows you order vegetarian food frequently, it applies a multiplier to vegetarian restaurants in your search results.
+
+### 2. User Generated Content (Reviews & Photos)
+Zomato stores millions of high-resolution food photos uploaded by users.
+- **Storage:** Original photos are stored in AWS S3. 
+- **Processing:** A background pipeline (using Kafka and worker nodes) compresses the images, generates thumbnails, and applies watermarks. 
+- **Delivery:** These images are distributed globally via a massive **CDN** (Content Delivery Network). Because photos are read-heavy and immutable, CDN cache hit ratios are extremely high.
+
+### 3. Review Aggregation
+When a user views a restaurant page, they expect to see an aggregate rating (e.g., 4.5 Stars based on 10,000 reviews).
+- Calculating this aggregate rating dynamically on every page load via a SQL query (`SELECT AVG(rating) FROM reviews WHERE restaurant_id = X`) is horribly inefficient.
+- **Architecture:** Ratings are pre-computed. When a user submits a new review, an asynchronous event is triggered. A worker calculates the new average and updates a single column (`aggregate_rating`) in the main restaurant database and updates the Elasticsearch index. Reads are therefore instantly O(1).
+
+## Internal working / Mermaid diagram (Discovery Focus)
+
+```mermaid
+graph TD
+    User[User searching "Sushi nearby"] --> API[API Gateway]
+    
+    API --> Search[Discovery Service]
+    Search --> Elastic[(Elasticsearch)]
+    
+    API --> Reviews[Review Service]
+    Reviews --> Cassandra[(Cassandra - Reviews Database)]
+    
+    UserUpload[User Uploads Food Photo] --> PhotoAPI[Media Service]
+    PhotoAPI --> S3[(AWS S3)]
+    PhotoAPI --> Kafka[Processing Queue]
+    
+    Kafka --> ImageWorker[Thumbnail Generation]
+    ImageWorker --> CDN[CDN - Distributed globally]
+```
+
+## Database Design for Reviews
+Because the volume of reviews and comments is massive, unstructured, and continuously growing, a highly scalable NoSQL database is preferred over a strict relational database.
+- **Cassandra** or **MongoDB** is ideal here. 
+- The data is partitioned by `restaurant_id`, so fetching the most recent 50 reviews for a specific restaurant requires querying only a single partition.
+
+## Handling Spam and Moderation
+With massive User Generated Content comes spam and fake reviews.
+- When a review is posted, it is sent to an asynchronous Kafka topic.
+- A **Machine Learning / Moderation Pipeline** consumes the review. It checks for profanity, spam markers, and suspicious velocity (e.g., a restaurant getting 500 5-star reviews in 10 minutes from new accounts).
+- If flagged, the review is hidden and sent to human moderators.
+
+## Summary
+While its delivery infrastructure mirrors Uber/Swiggy, Zomato's discovery engine mirrors Yelp or TripAdvisor. It relies on a robust Elasticsearch cluster for complex, personalized geospatial searching, aggressive CDN caching for millions of user-uploaded photos, and asynchronous processing to maintain aggregate ratings and filter spam without impacting the user's browsing experience.
+
+## Related topics
+- [Swiggy / DoorDash](../swiggy)
+- [Elasticsearch / Indexing](../../databases/indexing)
+- [CDN](../../caching/cdn)

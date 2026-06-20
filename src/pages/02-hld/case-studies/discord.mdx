@@ -1,0 +1,94 @@
+# Discord (Voice & Text Chat)
+
+## Introduction
+Discord is a popular communication platform that provides text, voice, and video chat. Originally designed for gamers, it has grown into a general-purpose community platform. Designing Discord involves handling immense text throughput (like WhatsApp) while simultaneously managing ultra-low-latency, high-bandwidth streaming audio and video for millions of users.
+
+## Problem Statement
+Discord's architecture must support massive "Servers" (Guilds) with millions of members, where hundreds of thousands of users can be online simultaneously, reading text channels, and dropping in and out of persistent Voice Channels seamlessly. Standard P2P (Peer-to-Peer) audio fails when a voice channel has more than 5 people.
+
+## Functional Requirements
+1. Users can create and join Servers (Guilds).
+2. Users can send real-time text messages in channels.
+3. Users can join Voice Channels for real-time audio/video.
+4. System must show online/offline presence for all friends and server members.
+
+## Non-Functional Requirements
+1. **Ultra-Low Latency (Voice):** Gamers require voice latency under 50ms.
+2. **High Throughput (Text):** Massive servers (like Midjourney) generate thousands of messages per second.
+3. **High Availability:** The service must be resilient to regional outages.
+
+## Core Architecture 1: Text Chat
+
+The text chat architecture is heavily inspired by massive distributed architectures like WhatsApp or Slack.
+
+- **WebSockets:** Clients maintain persistent WebSocket connections to the **Gateway** servers.
+- **Erlang/Elixir:** Discord uses Elixir (running on the Erlang VM) to manage millions of concurrent WebSocket connections efficiently, as Erlang was specifically designed by Ericsson for telecom routing.
+
+### The Fan-out Problem (Massive Guilds)
+If a user sends a message in a server with 1 Million online users:
+1. The message hits the Gateway.
+2. It is sent to a Guild routing service.
+3. The routing service must figure out exactly which Gateway servers hold the WebSocket connections for the 1 Million online users.
+4. It fans out the message to those Gateways, which push it down the sockets.
+Discord uses **Rust** for its most critical, performance-intensive fan-out services to achieve maximum memory efficiency and speed without garbage collection pauses.
+
+## Core Architecture 2: Voice Chat (WebRTC & SFU)
+
+How do 50 people talk in a voice channel without melting their CPUs?
+
+### Approach 1: Peer-to-Peer (Mesh)
+Every user sends their audio stream directly to every other user.
+- *Problem:* In a 50-person call, your laptop has to upload 49 audio streams and download 49 audio streams. Your bandwidth and CPU will max out. This only works for 1-on-1 calls (like Skype).
+
+### Approach 2: MCU (Multipoint Control Unit)
+All users send their audio to a central server. The server mixes all the audio together into a single master audio track and sends that one track back to everyone.
+- *Problem:* Mixing audio in real-time is incredibly CPU intensive for the server. It adds latency, and clients can't mute specific individuals locally.
+
+### Approach 3: SFU (Selective Forwarding Unit) - The Discord Solution
+Discord uses WebRTC paired with custom SFU servers.
+- Every user uploads their audio stream **once** to the Discord Voice Server (the SFU).
+- The SFU does NO mixing. It simply acts as a smart router. It copies the incoming stream and forwards it down to the other 49 users.
+- Your laptop downloads 49 distinct audio streams, but only uploads 1. Modern CPUs can easily decode 49 audio streams locally.
+- *Result:* Extremely low latency, low server CPU usage, and clients have full control over individual volumes.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    UserA[User A] <-->|WebSocket (Text)| Gateway[Gateway Server (Elixir)]
+    UserB[User B] <-->|WebSocket (Text)| Gateway
+    
+    Gateway --> MessageBus[Message Bus / Kafka]
+    MessageBus --> DB[(Cassandra DB)]
+    
+    UserA -->|UDP Audio Upload| VoiceServer[Voice Server / SFU]
+    VoiceServer -->|UDP Audio Download| UserB
+    VoiceServer -->|UDP Audio Download| UserC[User C]
+    
+    UserB -->|UDP Audio Upload| VoiceServer
+    VoiceServer -->|UDP Audio Download| UserA
+    VoiceServer -->|UDP Audio Download| UserC
+```
+
+## Database Design (Cassandra)
+Discord generates billions of messages. They need a database with linear write scalability.
+- They originally used MongoDB but quickly migrated to **Apache Cassandra**.
+- **Data Model Partitioning:** Messages are partitioned by `channel_id`.
+- This ensures that when a user opens a channel, fetching the last 50 messages is a single sequential read from one node in the Cassandra cluster.
+- *Recent Migration:* Discord recently migrated from Cassandra to **ScyllaDB** (a C++ rewrite of Cassandra) to avoid Java Garbage Collection spikes and handle their trillion-message scale with lower tail latency.
+
+## Managing Presence (Online Status)
+Showing who is online in a 1-million person server is a massive N-squared problem. If 1 person logs on, you have to notify 999,999 people.
+Discord uses a dedicated **Presence Service** (written in Go/Rust). Instead of immediately pushing every status change, they batch status updates and send them down the WebSocket every few seconds.
+
+## Bottlenecks & Trade-offs
+- **Voice Server Proximity:** For low latency, the Voice Server (SFU) must be geographically close to the users. Discord maintains fleets of Voice Servers in dozens of regions globally. When a user creates a voice channel, Discord spins up the SFU on the server closest to the first person who joins.
+- **UDP vs TCP:** Voice and Video streams use **UDP**, not TCP. If an audio packet drops, we don't want TCP to halt the stream and wait for a retransmission (causing stuttering). It's better to lose a millisecond of audio and keep the stream live.
+
+## Summary
+Discord is a masterclass in polyglot architecture. It uses Elixir for managing millions of concurrent WebSockets, Rust for blazing-fast memory-safe message routing, ScyllaDB for infinitely scalable message storage, and WebRTC SFUs over UDP to provide ultra-low-latency voice chat to the gaming community.
+
+## Related topics
+- [WhatsApp (Text Chat)](../whatsapp)
+- [Zoom (Video Streaming)](../zoom)
+- [Cassandra / NoSQL](../../databases/nosql)

@@ -1,3 +1,21 @@
 export default {
-  "index": "Overview"
+  "index": "Overview",
+  "url-shortener": "URL Shortener",
+  "whatsapp": "WhatsApp",
+  "uber": "Uber",
+  "instagram": "Instagram",
+  "youtube": "YouTube",
+  "netflix": "Netflix",
+  "twitter": "Twitter/X",
+  "google-drive": "Google Drive",
+  "dropbox": "Dropbox",
+  "amazon-ecommerce": "Amazon E-commerce",
+  "bookmyshow": "BookMyShow",
+  "swiggy": "Swiggy",
+  "zomato": "Zomato",
+  "paytm": "Paytm",
+  "upi": "UPI",
+  "google-docs": "Google Docs",
+  "discord": "Discord",
+  "zoom": "Zoom"
 };

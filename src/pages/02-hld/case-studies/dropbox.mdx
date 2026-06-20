@@ -1,0 +1,47 @@
+# Dropbox (Cloud File Storage)
+
+## Introduction
+*Note: The core architecture of Dropbox is nearly identical to [Google Drive](../google-drive). Both are file synchronization services that rely heavily on file chunking, metadata databases, and long-polling for real-time synchronization.*
+
+This document highlights the unique engineering choices Dropbox made specifically regarding their physical storage infrastructure.
+
+## Core Architecture Differences
+
+### The "Magic Pocket" Migration
+In its early days, Dropbox relied entirely on **Amazon S3** for storing the actual file chunks. As Dropbox scaled to an Exabyte (1,000 Petabytes) of data, the cost of paying AWS became an astronomical burden. 
+
+To solve this, Dropbox executed one of the most famous infrastructure projects in tech history: **Project Magic Pocket**. They built their own custom Exabyte-scale object storage system and migrated off AWS S3.
+
+### Why build custom storage?
+AWS S3 is a general-purpose object store designed for thousands of different use cases. Dropbox realized they had a very specific, narrow use case: storing immutable 4MB encrypted blocks of data. By building their own custom hardware and software tailored exactly to this one specific task, they could achieve massive cost savings and performance improvements.
+
+## Storage Tiering strategy
+Dropbox uses a highly optimized tiering system for their disks based on access patterns:
+- **Hot Storage:** SSDs and fast HDDs for newly uploaded files or files actively being collaborated on.
+- **Warm Storage:** High-density, slower spinning disks (SMR - Shingled Magnetic Recording drives) for files that haven't been touched in a few weeks. SMR drives are cheap but very slow at writing data. Because Dropbox chunks are immutable (write-once, read-many), SMR drives are a perfect, cost-effective fit.
+
+## Metadata Management (Edgestore)
+While Magic Pocket handles the chunks, Dropbox built a system called **Edgestore** to handle metadata (file names, permissions, chunk mappings). 
+Edgestore is a distributed metadata store built on top of heavily sharded MySQL databases.
+
+Why MySQL for metadata?
+- **Strong Consistency (ACID):** If two users rename a folder simultaneously, one must win and one must fail. Eventual consistency (like Cassandra) could result in orphaned files or corrupted folder structures.
+- **Sharding:** The MySQL databases are sharded by user. This ensures all transactions for a single user's namespace occur locally on a single shard, avoiding slow cross-shard distributed transactions.
+
+## Client-Side Deduplication
+Dropbox is famous for its extreme bandwidth efficiency.
+Before uploading a file, the Dropbox desktop client hashes the 4MB chunks and sends the hashes to the server. 
+If the server recognizes the hash (e.g., someone else on the internet already uploaded the exact same meme or MP3 file), the server tells the client: "I already have this chunk, don't bother uploading it."
+The server simply adds a pointer in the metadata database linking the existing chunk to your account. This saves immense bandwidth and storage space.
+
+## Interview focus
+If asked to design Dropbox or Google Drive in an interview, focus heavily on:
+1. **File Chunking:** Breaking files into 4MB blocks.
+2. **Delta Sync:** Only syncing the specific blocks that were modified.
+3. **Data Deduplication:** Preventing the upload of blocks that already exist on the server.
+4. **Separation of concerns:** Storing binary blocks in Object Storage, and structural metadata in a strictly consistent Relational DB.
+5. **Real-time Sync:** Using WebSockets or Long Polling to notify other clients when the metadata changes.
+
+## Related topics
+- [Google Drive](../google-drive)
+- [Databases (SQL vs NoSQL)](../../databases/nosql)
