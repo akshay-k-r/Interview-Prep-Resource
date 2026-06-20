@@ -1,0 +1,123 @@
+# Inheritance
+
+## Introduction
+Inheritance is a core pillar of Object-Oriented Programming (OOP) that allows a new class (the child/subclass) to inherit the properties and behaviors (fields and methods) of an existing class (the parent/superclass).
+
+## Problem Statement
+Imagine building a game with different types of characters: `Warrior`, `Mage`, and `Archer`. All three have an `x` and `y` coordinate, a `health` pool, and a `move()` method. If you write three completely separate classes, you will duplicate the `move()` logic and the coordinate fields three times. If you decide to add a `jump()` feature later, you have to write it three times in three different files.
+
+## Why this exists
+To promote code reusability and establish a hierarchical relationship between objects. Instead of duplicating code, a subclass can reuse code from its superclass and only write the code that makes it unique.
+
+## Real-world analogy
+Genetics is the perfect analogy. A child inherits characteristics from their parents (e.g., eye color, height). However, the child also has their own unique behaviors and characteristics (e.g., playing the guitar) that the parents do not possess.
+
+Another analogy is biological taxonomy. 
+- **Animal** (Parent) has `eat()` and `sleep()`.
+- **Dog** (Child of Animal) inherits `eat()` and `sleep()`, but adds `bark()`.
+- **Cat** (Child of Animal) inherits `eat()` and `sleep()`, but adds `meow()`.
+
+## Definition
+A mechanism wherein a new class acquires the properties and methods of an existing class, establishing an "IS-A" relationship.
+
+## Key concepts
+- **Superclass (Parent/Base Class):** The class whose features are inherited.
+- **Subclass (Child/Derived Class):** The class that inherits the other class. It can add its own fields and methods.
+- **"IS-A" Relationship:** Inheritance only makes sense if you can say "Subclass IS-A Superclass". (e.g., A Car IS-A Vehicle. An Apple IS-A Fruit).
+- **`super` keyword:** Used by the subclass to refer to the superclass (to call its constructor or its methods).
+- **Method Overriding:** A subclass can provide a specific implementation of a method that is already provided by its superclass.
+
+## Python/Java implementation
+
+### Java Implementation
+```java
+// 1. Superclass
+class Employee {
+    protected String name;
+    protected double baseSalary;
+
+    public Employee(String name, double baseSalary) {
+        this.name = name;
+        this.baseSalary = baseSalary;
+    }
+
+    public void displayInfo() {
+        System.out.println("Name: " + name + ", Salary: $" + calculatePay());
+    }
+
+    public double calculatePay() {
+        return baseSalary;
+    }
+}
+
+// 2. Subclass extending the Superclass
+class Manager extends Employee {
+    private double bonus;
+
+    public Manager(String name, double baseSalary, double bonus) {
+        // Call the superclass constructor
+        super(name, baseSalary);
+        this.bonus = bonus;
+    }
+
+    // Method Overriding (Changing the behavior of the parent)
+    @Override
+    public double calculatePay() {
+        return baseSalary + bonus; // Calculates pay differently for managers
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Employee worker = new Employee("Alice", 50000);
+        Manager boss = new Manager("Bob", 80000, 20000);
+
+        worker.displayInfo(); // Output: Name: Alice, Salary: $50000.0
+        boss.displayInfo();   // Output: Name: Bob, Salary: $100000.0
+    }
+}
+```
+
+## Multiple real-world examples
+1. **UI Frameworks:** A base `UIComponent` class handles width, height, and rendering logic. `Button`, `TextBox`, and `Checkbox` inherit from it to reuse the rendering logic while adding specific behaviors (like click handlers).
+2. **E-commerce Products:** A base `Product` class handles ID, Price, and Name. `DigitalProduct` inherits it and adds a `downloadUrl`. `PhysicalProduct` inherits it and adds `shippingWeight`.
+3. **Exception Handling:** In Java, all custom exceptions you create must inherit from the base `Exception` or `RuntimeException` class to be thrown and caught by the JVM.
+
+## Pros
+- **Code Reusability:** Write common logic once in the parent class.
+- **Extensibility:** Easily add new features to all child classes by modifying the parent.
+- **Polymorphism Base:** Inheritance is the prerequisite for achieving runtime polymorphism.
+
+## Cons
+- **Tight Coupling:** The child class is tightly coupled to the parent class. If you change a method in the parent class, it can unintentionally break all child classes (The Fragile Base Class Problem).
+- **Rigid Hierarchies:** Real-world concepts rarely fit perfectly into rigid, single-inheritance tree structures.
+
+## Interview questions
+
+### Beginner
+- **Q: Does Java support Multiple Inheritance?**
+  - **A:** Java does NOT support multiple inheritance of *classes* (a child cannot extend two parent classes) to prevent the "Diamond Problem" (ambiguity if both parents have a method with the same name). However, Java supports multiple inheritance of *Interfaces*.
+
+### Intermediate
+- **Q: What is the difference between `super()` and `this()`?**
+  - **A:** `super()` is used to call the constructor of the parent class. `this()` is used to call another constructor within the same class. Both must be the very first statement inside a constructor.
+
+### Senior
+- **Q: Explain the principle of "Composition over Inheritance".**
+  - **A:** Inheritance creates strict "IS-A" relationships that are hard to change later. Composition uses "HAS-A" relationships (where a class holds references to other objects to gain their behavior). Modern software design heavily favors Composition because it is far more flexible at runtime and avoids deeply nested, brittle inheritance trees.
+
+## Common mistakes
+- **Using inheritance for code reuse without an "IS-A" relationship:** If you have a `MathUtils` class, and you make `Calculator` extend it just to use its methods, that is wrong. A Calculator IS NOT a MathUtils. It should *contain* (Composition) MathUtils instead.
+- **Deep Inheritance Trees:** Creating hierarchies like `Object -> Entity -> Animal -> Mammal -> Dog -> Poodle`. Deep hierarchies are incredibly hard to understand, debug, and refactor. Keep hierarchies shallow (1-2 levels max).
+
+## Best practices
+- Only use inheritance when the "IS-A" relationship holds true in all scenarios (Liskov Substitution Principle).
+- Prefer Composition over Inheritance unless there is a clear, undeniable hierarchical taxonomy.
+
+## Summary
+Inheritance is a powerful tool for reusing code and establishing hierarchies. While it allows for elegant designs like UI component trees, modern developers treat it with caution, often preferring Composition to avoid the brittle, tightly-coupled codebases that deep inheritance trees inevitably create.
+
+## Related topics
+- [Polymorphism](../polymorphism)
+- [Classes & Objects](../classes-objects)
+- [Composition vs Inheritance](../../design-principles/composition-vs-inheritance)

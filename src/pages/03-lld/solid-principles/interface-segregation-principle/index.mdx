@@ -1,0 +1,125 @@
+# Interface Segregation Principle (ISP)
+
+## Introduction
+The Interface Segregation Principle (ISP) is the "I" in SOLID. It focuses on the design of Interfaces, ensuring that they remain small, focused, and highly cohesive.
+
+## Problem Statement
+Imagine an interface called `IMachine` used in a factory. It has three methods: `print()`, `scan()`, and `fax()`.
+A modern multi-function printer class implements this perfectly.
+However, a simple, cheap `BasicPrinter` class only knows how to print. Because it implements `IMachine`, it is forced to write code for `scan()` and `fax()`, usually just returning `null` or throwing a `NotImplementedException`. 
+The `BasicPrinter` is burdened with methods it does not need, creating confusing code and violating contracts.
+
+## Why this exists
+To prevent the creation of "Fat Interfaces" (interfaces with too many methods). When interfaces are large, implementing classes are forced to depend on methods they do not use. If the `fax()` method signature needs to change, the `BasicPrinter` class has to be recompiled and updated, even though it doesn't even use faxing.
+
+## Real-world analogy
+Imagine going to a restaurant and the menu is a 500-page book containing Breakfast, Lunch, Dinner, Drinks, Kids Meals, and Catering Options. You just want a coffee. You are burdened by this massive "interface."
+A better design is segregation: A small Coffee Menu, a separate Lunch Menu. You are given only the menu (interface) you actually need.
+
+## Definition
+**"Clients should not be forced to depend upon interfaces that they do not use."** — Robert C. Martin
+
+## Key concepts
+- **Fat/Polluted Interfaces:** An interface that tries to do too many things. It violates cohesion.
+- **Role Interfaces:** ISP advocates for creating multiple, small, specific interfaces (roles) rather than one general-purpose interface.
+
+## Python/Java implementation
+
+### Bad Implementation (Violating ISP)
+```java
+// A "Fat" Interface
+interface Worker {
+    void work();
+    void eat();
+    void sleep();
+}
+
+class HumanWorker implements Worker {
+    public void work() { System.out.println("Human working"); }
+    public void eat() { System.out.println("Human eating lunch"); }
+    public void sleep() { System.out.println("Human sleeping at home"); }
+}
+
+class RobotWorker implements Worker {
+    public void work() { System.out.println("Robot working continuously"); }
+    
+    // Robot is forced to implement methods it doesn't need!
+    public void eat() {
+        throw new UnsupportedOperationException("Robots don't eat!");
+    }
+    
+    public void sleep() {
+        throw new UnsupportedOperationException("Robots don't sleep!");
+    }
+}
+```
+
+### Better Implementation (Following ISP)
+```java
+// Segregate into smaller, role-based interfaces
+interface Workable {
+    void work();
+}
+
+interface Eatable {
+    void eat();
+}
+
+interface Sleepable {
+    void sleep();
+}
+
+// Human implements all the roles they need
+class HumanWorker implements Workable, Eatable, Sleepable {
+    public void work() { System.out.println("Human working"); }
+    public void eat() { System.out.println("Human eating lunch"); }
+    public void sleep() { System.out.println("Human sleeping at home"); }
+}
+
+// Robot ONLY implements what it actually does
+class RobotWorker implements Workable {
+    public void work() { System.out.println("Robot working continuously"); }
+}
+```
+
+## Multiple real-world examples
+1. **Java Collections Framework:** Instead of one massive `ICollection` interface that has `add()`, `remove()`, `sort()`, and `listenForChanges()`, Java breaks it down. There is `Collection`, `List`, `Set`, `Queue`, etc. You only implement the specific interface your data structure actually supports.
+2. **UI Event Listeners:** Instead of an `IUserAction` interface with `onClick()`, `onHover()`, `onSwipe()`, and `onDrag()`, Android/Java provides segregated interfaces: `OnClickListener`, `OnTouchListener`, etc. A simple button doesn't have to implement swipe logic.
+3. **Cloud Services:** AWS SDKs don't provide a single `IAwsService` interface with methods for S3, EC2, and Lambda. They provide small, specific clients for each service.
+
+## Pros
+- **Decoupling:** Changes to one interface (e.g., adding a parameter to `eat()`) do not affect classes that don't care about eating (e.g., `RobotWorker`).
+- **Readability:** Small interfaces are self-documenting. If a class implements `Workable`, you know exactly what it does.
+- **Safety:** Prevents runtime crashes caused by calling methods that throw `NotImplementedException`.
+
+## Cons
+- **Interface Explosion:** Similar to the Single Responsibility Principle, aggressively applying ISP can result in hundreds of tiny interfaces with only one method each, which can clutter the project structure.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the Interface Segregation Principle?**
+  - **A:** It states that no client should be forced to implement methods it does not use. Large interfaces should be split into smaller, more specific ones.
+
+### Intermediate
+- **Q: How does ISP relate to the Single Responsibility Principle (SRP)?**
+  - **A:** They are two sides of the same coin. SRP says a *class* should only do one thing. ISP says an *interface* should only describe one cohesive set of behaviors. If you follow SRP for classes, you will naturally tend to write segregated interfaces.
+
+### Senior
+- **Q: If I have a fat interface owned by an external library that I cannot change, how do I apply ISP?**
+  - **A:** You can use the **Adapter Pattern**. You create your own small, clean interface. Then you write an Adapter class that implements your clean interface and translates those calls to the messy third-party fat interface, isolating your core business logic from the pollution.
+
+## Common mistakes
+- **Designing interfaces from the "Provider" perspective:** Creating an interface based on what the implementing class *can* do, rather than what the client class *needs*. Interfaces belong to the clients that call them, not the classes that implement them.
+
+## Best practices
+- If a class implements an interface but leaves half the methods empty or throwing exceptions, you need to segregate that interface.
+- Name interfaces based on capabilities (often using `-able` suffixes in Java, like `Iterable`, `Cloneable`).
+
+## Summary
+The Interface Segregation Principle protects code from unnecessary dependencies. By keeping interfaces lean and highly cohesive, developers ensure that changing a specific feature only affects the classes directly involved with that feature, keeping the system flexible and maintainable.
+
+## Related topics
+- [Single Responsibility Principle](../single-responsibility-principle)
+- [Liskov Substitution Principle](../liskov-substitution-principle)
+- [Adapter Pattern](../../../01-design-patterns/structural/adapter)

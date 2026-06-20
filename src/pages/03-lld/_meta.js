@@ -1,3 +1,10 @@
 export default {
-  "index": "Overview"
+  "index": "Overview",
+  "oop-fundamentals": "OOP Fundamentals",
+  "solid-principles": "SOLID Principles",
+  "design-principles": "Design Principles",
+  "uml": "UML & Modeling",
+  "java": "Java Fundamentals",
+  "concurrency-java": "Concurrency in Java",
+  "machine-coding": "Machine Coding"
 };

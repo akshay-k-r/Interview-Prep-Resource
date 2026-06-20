@@ -1,0 +1,130 @@
+# Liskov Substitution Principle (LSP)
+
+## Introduction
+The Liskov Substitution Principle (LSP) is the "L" in SOLID. Named after computer scientist Barbara Liskov, it is the most mathematically strict of the SOLID principles. It defines exactly what it means to have a "correct" inheritance hierarchy.
+
+## Problem Statement
+In Object-Oriented Programming, we are taught that inheritance represents an "IS-A" relationship. For example, a `Square` IS-A `Rectangle`. Therefore, `Square` should inherit from `Rectangle`.
+However, a `Rectangle` has independent `setWidth()` and `setHeight()` methods. If `Square` inherits these, what happens when you call `square.setWidth(5)` and `square.setHeight(10)`? A square cannot have different width and height. 
+If the `Square` class overrides these methods to force width and height to always be equal, it fundamentally changes the expected behavior of the `Rectangle` class. Any code expecting a normal rectangle will break. This is a violation of LSP.
+
+## Why this exists
+To ensure that inheritance hierarchies are semantically sound. If a program uses a base class, it must be able to use any of its derived classes without knowing it, and without the program breaking or behaving incorrectly.
+
+## Real-world analogy
+Imagine a coffee machine that requires a standard **Coffee Pod** to operate. 
+- You buy an **Espresso Pod** (a subclass of Coffee Pod). It fits perfectly and works. (LSP Adhered).
+- You buy a **Hot Chocolate Pod** (a subclass of Coffee Pod). It fits perfectly and works. (LSP Adhered).
+- You buy a **Plastic Toy Pod** (a subclass of Coffee Pod) that looks identical but contains no coffee and jams the machine. Even though it "IS-A" pod physically, it violates the expected behavior of a pod. (LSP Violated).
+
+## Definition
+**"Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program."** — Barbara Liskov
+
+If class `B` is a subclass of class `A`, then we should be able to replace `A` with `B` without breaking the program.
+
+## Key concepts
+- **Behavioral Subtyping:** Inheritance isn't just about sharing fields and methods; it's about sharing *behavioral expectations*.
+- **Preconditions cannot be strengthened:** A subclass cannot demand stricter conditions than its parent before executing a method.
+- **Postconditions cannot be weakened:** A subclass must guarantee at least as much as its parent upon completing a method.
+
+## Python/Java implementation
+
+### Bad Implementation (Violating LSP)
+```java
+class Bird {
+    public void fly() {
+        System.out.println("Flying in the sky!");
+    }
+}
+
+class Sparrow extends Bird { }
+
+// Penguin IS A Bird, right?
+class Penguin extends Bird {
+    @Override
+    public void fly() {
+        // Penguins can't fly! We have to throw an exception.
+        throw new UnsupportedOperationException("Penguins can't fly!");
+    }
+}
+
+class BirdManager {
+    public void makeAllBirdsFly(List<Bird> birds) {
+        for (Bird b : birds) {
+            // If 'b' is a Penguin, the program crashes!
+            // We cannot substitute Bird with Penguin without breaking the program.
+            b.fly(); 
+        }
+    }
+}
+```
+
+### Better Implementation (Following LSP)
+```java
+class Bird { 
+    public void eat() { System.out.println("Eating..."); }
+}
+
+// Create a more specific abstraction
+class FlyingBird extends Bird {
+    public void fly() { System.out.println("Flying in the sky!"); }
+}
+
+class Sparrow extends FlyingBird { }
+
+// Penguin only extends Bird, not FlyingBird
+class Penguin extends Bird {
+    public void swim() { System.out.println("Swimming in the ocean!"); }
+}
+
+class BirdManager {
+    // This method now ONLY accepts FlyingBirds. 
+    // It is mathematically safe. No crashes.
+    public void makeAllBirdsFly(List<FlyingBird> birds) {
+        for (FlyingBird b : birds) {
+            b.fly();
+        }
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Collections Framework:** In Java, a `List` is an interface. `ArrayList` and `LinkedList` both implement it correctly. You can swap them interchangeably, and operations like `.add()` and `.get()` will work exactly as expected.
+2. **Read-Only vs Writable Files:** If a parent class `File` has a `write()` method, and a child class `ReadOnlyFile` overrides `write()` to throw an exception, this violates LSP. The parent class should be `ReadableFile`, and a separate subclass `WritableFile` should add the `write()` method.
+3. **The Square/Rectangle Problem:** (As described in the Problem Statement). Geometrically, a Square is a Rectangle. Programmatically, it is not, because it mutates state differently.
+
+## Pros
+- **Predictability:** Client code doesn't need to use ugly `instanceof` checks to see what specific subclass it is dealing with to avoid crashes.
+- **Robust Abstractions:** Forces developers to think deeply about their taxonomy and interfaces.
+
+## Cons
+- **Counter-intuitive Real-World Modeling:** As seen with Square/Rectangle or Penguin/Bird, mathematically or biologically accurate "IS-A" relationships do not always translate to correct Object-Oriented "IS-A" relationships. This can be frustrating for beginners.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the Liskov Substitution Principle?**
+  - **A:** It states that subclasses should be substitutable for their base classes without causing errors or unexpected behavior in the program.
+
+### Intermediate
+- **Q: Why does the classic "Square inheriting from Rectangle" example violate LSP?**
+  - **A:** Because a Rectangle expects width and height to be modifiable independently. A Square forces them to change together. If a method expects a Rectangle, sets the width to 5 and height to 10, and then checks the area, it expects 50. If the object was actually a Square, the area might be 100, breaking the expected behavior.
+
+### Senior
+- **Q: How does LSP relate to Design by Contract?**
+  - **A:** LSP is the foundation of Design by Contract for inheritance. A subclass must honor the contract (preconditions, postconditions, invariants) established by the parent class. It cannot ask for more (stricter preconditions) or promise less (weaker postconditions) than the parent.
+
+## Common mistakes
+- **Throwing `NotImplementedException`:** If you inherit from a class or interface and find yourself throwing an `UnsupportedOperationException` for one of the methods, you are almost certainly violating LSP.
+
+## Best practices
+- Favor **Composition over Inheritance**. Many LSP violations occur because developers force inheritance just to reuse a few lines of code.
+- If two classes share code but don't share identical behaviors, extract the common code into a third class (or an Interface) rather than forcing one to inherit from the other.
+
+## Summary
+The Liskov Substitution Principle acts as a quality control check for inheritance. It ensures that polymorphism actually works safely. By ensuring that subclasses perfectly honor the behavioral contracts of their parents, we prevent nasty runtime surprises and brittle codebases.
+
+## Related topics
+- [Inheritance](../../oop-fundamentals/inheritance)
+- [Composition vs Inheritance](../../design-principles/composition-vs-inheritance)
+- [Interface Segregation Principle](../interface-segregation-principle)

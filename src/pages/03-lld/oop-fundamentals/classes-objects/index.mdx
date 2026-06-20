@@ -1,0 +1,130 @@
+# Classes & Objects
+
+## Introduction
+Object-Oriented Programming (OOP) is a programming paradigm based on the concept of "objects," which can contain data (in the form of fields or properties) and code (in the form of procedures or methods). At the very core of OOP are **Classes** and **Objects**.
+
+## Problem Statement
+In procedural programming (like C), data and the functions that operate on that data are separate. As programs grow large, managing which functions modify which pieces of data becomes chaotic, leading to tightly coupled, hard-to-maintain "spaghetti code."
+
+## Why this exists
+To bundle data and the behavior that operates on that data together into a single, cohesive unit. This mimics the real world, making code easier to conceptualize, manage, and reuse.
+
+## Real-world analogy
+Think of a **Class** as a blueprint for a house. The blueprint itself isn't a house; you can't live in it. But it defines exactly what the house will look like (doors, windows, dimensions).
+An **Object** is the actual, physical house built from that blueprint. You can build many physical houses (Objects) from a single blueprint (Class), and each house can be painted a different color.
+
+## Definition
+- **Class:** A user-defined blueprint or prototype from which objects are created. It defines a set of properties and methods that are common to all objects of one type.
+- **Object:** An instance of a class. It has state (data) and behavior (methods).
+
+## Key concepts
+- **State (Attributes/Fields):** Represents the data associated with an object (e.g., `color`, `speed`).
+- **Behavior (Methods):** Functions defined inside a class that operate on the object's state (e.g., `accelerate()`, `brake()`).
+- **Identity:** Each object has a unique identity (usually a memory address), even if its state is identical to another object.
+- **Instantiation:** The process of creating an object from a class using the `new` keyword (in languages like Java or C++).
+
+## Python/Java implementation
+
+### Java Example
+```java
+// 1. Defining the Class (The Blueprint)
+class Car {
+    // State (Fields)
+    String color;
+    String model;
+    int currentSpeed;
+
+    // Constructor (Initializes the object)
+    public Car(String color, String model) {
+        this.color = color;
+        this.model = model;
+        this.currentSpeed = 0;
+    }
+
+    // Behavior (Methods)
+    public void accelerate(int increment) {
+        currentSpeed += increment;
+        System.out.println(model + " is now going " + currentSpeed + " mph.");
+    }
+}
+
+// 2. Creating Objects
+public class Main {
+    public static void main(String[] args) {
+        // Instantiating Objects from the Class
+        Car myTesla = new Car("Red", "Model S");
+        Car myToyota = new Car("Blue", "Camry");
+
+        // The objects have independent states
+        myTesla.accelerate(60);  // Output: Model S is now going 60 mph.
+        myToyota.accelerate(30); // Output: Camry is now going 30 mph.
+    }
+}
+```
+
+### Python Example
+```python
+# 1. Defining the Class
+class Car:
+    # Constructor
+    def __init__(self, color, model):
+        self.color = color          # State
+        self.model = model
+        self.current_speed = 0
+
+    # Behavior
+    def accelerate(self, increment):
+        self.current_speed += increment
+        print(f"{self.model} is now going {self.current_speed} mph.")
+
+# 2. Creating Objects
+my_tesla = Car("Red", "Model S")
+my_toyota = Car("Blue", "Camry")
+
+my_tesla.accelerate(60)
+my_toyota.accelerate(30)
+```
+
+## Multiple real-world examples
+1. **E-commerce System:** A `User` class (blueprint) creates specific user objects (`alice_obj`, `bob_obj`). A `ShoppingCart` class creates independent carts for each user.
+2. **Banking App:** A `BankAccount` class defines the behavior (`deposit()`, `withdraw()`). An object is your specific savings account containing your specific balance.
+3. **Video Games:** An `Enemy` class defines how an enemy moves and attacks. When a level loads, the game instantiates 50 `Enemy` objects and places them on the screen.
+
+## Pros
+- **Modularity:** Source code for an object can be written and maintained independently of the source code for other objects.
+- **Information Hiding:** By interacting only with an object's methods, the details of its internal implementation remain hidden (Encapsulation).
+- **Code Reuse:** You write the class once, but can create millions of objects from it.
+
+## Cons
+- **Overhead:** Creating and destroying millions of objects can consume significant memory and CPU, triggering frequent Garbage Collection pauses.
+- **Complexity:** For very simple scripts or mathematical calculations, defining classes is unnecessary boilerplate.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between a Class and an Object?**
+  - **A:** A Class is a logical template/blueprint. An Object is a physical reality (in memory) created from that blueprint.
+
+### Intermediate
+- **Q: What is a Constructor?**
+  - **A:** A special method inside a class that is automatically called when an object is instantiated. It is used to initialize the object's initial state.
+
+### Senior
+- **Q: In Java, are objects passed by value or by reference?**
+  - **A:** Java is strictly **pass-by-value**. However, when you pass an object to a method, you are passing the *value of the reference* (the memory address) to that object. This means if you modify the object's fields inside the method, the original object is modified. But if you reassign the object reference entirely (e.g., `obj = new Car()`), it does not affect the original reference in the calling method.
+
+## Common mistakes
+- **God Classes:** Creating a single class that does everything (e.g., a `SystemManager` class with 50 fields and 200 methods). This violates the Single Responsibility Principle. Classes should be small and focused.
+- **Forgetting `this` or `self`:** In Java/Python, failing to use the `this.` or `self.` keyword when assigning variables in the constructor, leading to local variable shadowing and bugs.
+
+## Best practices
+- Name classes using `PascalCase` (e.g., `ShoppingCart`).
+- Name objects/variables using `camelCase` (Java) or `snake_case` (Python).
+- A class should do one thing and do it well (Single Responsibility Principle).
+
+## Summary
+Classes and Objects form the absolute foundation of Object-Oriented Programming. By bundling data and behavior into cohesive objects, developers can model complex real-world systems in a modular, reusable, and understandable way.
+
+## Related topics
+- [Encapsulation](../encapsulation)
+- [Inheritance](../inheritance)

@@ -1,0 +1,137 @@
+# Dependency Injection (DI)
+
+## Introduction
+Dependency Injection (DI) is a software design pattern heavily used in modern frameworks (like Spring, Angular, and .NET Core) to implement Inversion of Control (IoC) and resolve dependencies. It is the practical implementation of the SOLID Dependency Inversion Principle.
+
+## Problem Statement
+Imagine a `Car` class that needs an `Engine` to function. 
+If the `Car` class creates the engine itself (`Engine engine = new V8Engine();` inside the Car's constructor), the Car is now permanently hardcoded to only ever use a V8 Engine. 
+If you want to build an Electric Car, or if you want to test the Car using a Fake Engine, you cannot do it without modifying the `Car`'s source code. The classes are tightly coupled.
+
+## Why this exists
+To create loosely coupled code. By removing the responsibility of *creating* objects from the classes that *use* them, we can swap out components effortlessly, making the system highly testable and flexible.
+
+## Real-world analogy
+Consider a highly skilled Surgeon (the Class) and a Scalpel (the Dependency).
+- **Without DI:** The Surgeon has to forge the steel, sharpen the blade, and build their own scalpel before performing surgery. If they need a laser scalpel, they don't know how to build it.
+- **With DI:** The Surgeon simply walks into the operating room and holds out their hand. A nurse (the DI Container / Injector) hands the Surgeon the exact scalpel they need for that specific operation. The Surgeon just focuses on surgery.
+
+## Definition
+A technique in which an object receives other objects that it depends on, rather than creating them itself.
+
+## Key concepts
+- **Dependency:** An object that another object needs to function.
+- **Injection:** The passing of a dependency to a dependent object.
+- **IoC Container:** A framework (like Spring) that automatically manages the creation, wiring, and injection of dependencies across the entire application lifecycle.
+
+## Python/Java implementation
+
+### Bad Implementation (Hardcoded Dependency)
+```java
+class V8Engine {
+    public void start() { System.out.println("V8 Engine roaring!"); }
+}
+
+class Car {
+    private V8Engine engine;
+
+    public Car() {
+        // VIOLATION: The Car is tightly coupled to V8Engine.
+        // It builds its own dependency.
+        this.engine = new V8Engine(); 
+    }
+
+    public void drive() {
+        engine.start();
+        System.out.println("Car is moving.");
+    }
+}
+```
+
+### Better Implementation (Constructor Injection)
+```java
+// 1. Create an abstraction
+interface Engine {
+    void start();
+}
+
+class V8Engine implements Engine {
+    public void start() { System.out.println("V8 Engine roaring!"); }
+}
+
+class ElectricEngine implements Engine {
+    public void start() { System.out.println("Electric Engine humming quietly."); }
+}
+
+// 2. The class RECEIVES its dependency
+class Car {
+    private Engine engine;
+
+    // DEPENDENCY INJECTION via Constructor
+    public Car(Engine engine) {
+        this.engine = engine;
+    }
+
+    public void drive() {
+        engine.start();
+        System.out.println("Car is moving.");
+    }
+}
+
+// 3. The Injector (Main method or Framework) handles the wiring
+public class Main {
+    public static void main(String[] args) {
+        // We can inject ANY type of engine!
+        Engine myEngine = new ElectricEngine();
+        Car myCar = new Car(myEngine); 
+        myCar.drive();
+    }
+}
+```
+
+## Types of Dependency Injection
+1. **Constructor Injection (Recommended):** Dependencies are provided through the class constructor. Guarantees the object is fully initialized and valid before use. Allows fields to be marked `final/readonly`.
+2. **Setter Injection:** Dependencies are provided through setter methods. Useful for optional dependencies that can be changed at runtime, but leaves the object in a potentially uninitialized state right after instantiation.
+3. **Field Injection (Avoid):** Frameworks (like Spring) use reflection to directly inject into private fields (e.g., `@Autowired private Engine engine;`). Highly discouraged today because it makes the class impossible to instantiate in Unit Tests without the heavy framework.
+
+## Multiple real-world examples
+1. **Spring Boot (Java):** You annotate a class with `@Service`. In its constructor, you require a `UserRepository`. When the app starts, Spring automatically finds the `UserRepository`, creates it, and injects it into your Service.
+2. **Unit Testing:** You have an `OrderService` that depends on a `PaymentGateway`. During testing, you don't want to hit the real Stripe API. Because of DI, you can create a `MockPaymentGateway` and inject it into the `OrderService`. The service tests run successfully without any network calls.
+3. **Angular (Frontend):** Services (like `HttpClient` or `Router`) are injected into UI Components via their constructors, heavily relying on TypeScript's DI container.
+
+## Pros
+- **Unit Testing:** Classes become trivially easy to mock and test.
+- **Decoupling:** Classes are oblivious to *how* their dependencies are created.
+- **Single Responsibility:** Classes focus purely on their business logic, offloading object creation to the framework.
+
+## Cons
+- **Learning Curve:** For beginners, magic DI frameworks (like Spring or Dagger) can obscure the flow of execution. You don't see `new Database()` anywhere, making it hard to trace where objects come from.
+- **Configuration Overhead:** Setting up DI containers and modules can require significant boilerplate in languages that don't have built-in framework support.
+
+## Interview questions
+
+### Beginner
+- **Q: What is Dependency Injection?**
+  - **A:** It is a pattern where an object receives its dependencies from the outside (usually via its constructor) rather than creating them itself using the `new` keyword.
+
+### Intermediate
+- **Q: Why is Constructor Injection preferred over Field Injection?**
+  - **A:** Constructor injection clearly defines the mandatory dependencies required for a class to function. It allows you to make the fields immutable (`final`), and it makes the class easy to instantiate in pure unit tests without needing a reflection framework. Field injection hides dependencies and makes testing difficult.
+
+### Senior
+- **Q: What is the difference between Dependency Injection and Inversion of Control (IoC)?**
+  - **A:** IoC is the broader principle that the custom-written portions of a computer program receive the flow of control from a generic framework. DI is a specific *implementation* of IoC regarding how object dependencies are resolved.
+
+## Common mistakes
+- **Service Locator Pattern:** Passing the entire DI Container into a class so it can "ask" for dependencies (`container.get(Engine.class)`). This hides the class's actual dependencies and tightly couples it to the framework container.
+
+## Best practices
+- Use Constructor Injection for mandatory dependencies.
+- Use Interfaces for the types being injected, not concrete classes.
+
+## Summary
+Dependency Injection is the practical application of building modular, testable software. By delegating the creation and wiring of objects to external injectors or frameworks, developers build systems out of interchangeable, loosely coupled components.
+
+## Related topics
+- [Dependency Inversion Principle](../dependency-inversion-principle)
+- [Unit Testing / Mocking](../../../01-system-design/testing)

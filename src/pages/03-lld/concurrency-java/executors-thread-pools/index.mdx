@@ -1,0 +1,139 @@
+# Executors & Thread Pools
+
+## Introduction
+While the `Thread` class and `Runnable` interface are the building blocks of Java concurrency, manually creating and managing raw threads is highly discouraged in enterprise applications. The Executor Framework (introduced in Java 5) provides a robust, high-level API for managing pools of threads.
+
+## Problem Statement
+Creating a new OS thread is an extremely expensive operation in terms of CPU time and memory allocation (each thread gets its own stack, usually ~1MB). 
+If a high-traffic web server manually does `new Thread(task).start()` for every incoming HTTP request, a sudden spike of 10,000 users will attempt to create 10,000 threads. The JVM will instantly run out of memory and crash with an `OutOfMemoryError: unable to create new native thread`.
+
+## Why this exists
+To decouple task submission from task execution. Instead of creating a new thread for every task, we create a fixed "Pool" of reusable threads. Tasks are placed in a queue, and the threads in the pool pick them up one by one, ensuring the system never exceeds its memory limits.
+
+## Real-world analogy
+Think of a bank with 5 teller windows (the **Thread Pool** of size 5).
+If 50 customers walk in (the **Tasks**), the bank does not instantly hire 45 new tellers. That would bankrupt the bank (crashing the JVM).
+Instead, the 50 customers wait in a line (the **Queue**). The 5 tellers serve the first 5 customers. As soon as a teller finishes a transaction, they yell "Next!" and process the next customer in the queue. The tellers are constantly *reused*.
+
+## Definition
+- **Thread Pool:** A managed collection of worker threads waiting to execute tasks.
+- **ExecutorService:** The primary interface in Java that manages the lifecycle of a Thread Pool and accepts tasks for execution.
+
+## Key concepts
+
+### 1. Types of Thread Pools
+You create pools using the `Executors` factory class:
+- **`newFixedThreadPool(int n)`:** Creates a pool with exactly `n` threads. If more tasks arrive, they wait in an unbounded queue.
+- **`newCachedThreadPool()`:** Creates a pool that creates new threads as needed, but reuses previously constructed threads when they are available. Good for lots of short-lived tasks.
+- **`newSingleThreadExecutor()`:** A pool with exactly one thread. Guarantees tasks execute sequentially.
+- **`newScheduledThreadPool(int n)`:** Used to execute tasks periodically (like a Cron job) or after a specific delay.
+
+### 2. Callable and Future
+- **`Runnable`:** Represents a task, but its `run()` method returns `void` and cannot throw checked exceptions.
+- **`Callable<V>`:** Represents a task that returns a value of type `V` and can throw checked exceptions.
+- **`Future<V>`:** When you submit a `Callable` to an Executor, it immediately returns a `Future`. It represents the pending result of the asynchronous task. You call `future.get()` to wait for and retrieve the final result.
+
+## Python/Java implementation
+
+### 1. Fixed Thread Pool Example
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+class Task implements Runnable {
+    private int taskId;
+    public Task(int id) { this.taskId = id; }
+
+    @Override
+    public void run() {
+        System.out.println("Task " + taskId + " executing on " + Thread.currentThread().getName());
+        try { Thread.sleep(1000); } catch (Exception e) {} // Simulate work
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        // Create a pool of exactly 3 threads
+        ExecutorService executor = Executors.newFixedThreadPool(3);
+
+        // Submit 10 tasks. The 3 threads will process them in batches.
+        for (int i = 1; i <= 10; i++) {
+            executor.submit(new Task(i));
+        }
+
+        // We must shut down the executor, otherwise the application never exits!
+        executor.shutdown(); 
+    }
+}
+```
+
+### 2. Using Callable and Future
+```java
+import java.util.concurrent.*;
+
+public class FutureExample {
+    public static void main(String[] args) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        // A Callable task that returns an Integer
+        Callable<Integer> heavyMathTask = () -> {
+            Thread.sleep(2000); // Simulate 2 seconds of heavy math
+            return 42;
+        };
+
+        System.out.println("Submitting task...");
+        Future<Integer> futureResult = executor.submit(heavyMathTask);
+
+        System.out.println("Doing other things while math is calculating...");
+        
+        // Calling .get() BLOCKS the main thread until the task finishes
+        Integer result = futureResult.get(); 
+        
+        System.out.println("The result is: " + result);
+        executor.shutdown();
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Web Servers (Tomcat/Jetty):** Internally, they use massive Thread Pools. The size of this pool (e.g., 200) dictates exactly how many concurrent HTTP requests the server can process at the exact same millisecond.
+2. **Database Connection Pools (HikariCP):** Similar concept, but for network connections. Opening a TCP connection to a database is slow, so a pool of 10 connections is kept open and reused by whatever threads need them.
+3. **Batch Processing:** Processing 1 million images overnight. Submitting all 1 million image URLs as `Callable` tasks to a `FixedThreadPool(10)` ensures that the server processes exactly 10 images concurrently, maximizing CPU without running out of memory.
+
+## Pros
+- **Resource Management:** Prevents the JVM from crashing under heavy load by strictly limiting the maximum number of concurrent threads.
+- **Performance:** Reusing threads drastically reduces the overhead of creating and destroying OS threads.
+- **Clean API:** `Future` and `Callable` make it incredibly easy to retrieve results from asynchronous background tasks.
+
+## Cons
+- **Deadlocks:** If Thread A in the pool submits Task B to the same pool, and calls `.get()`, it is waiting for Task B. If the pool is full, Task B sits in the queue waiting for a free thread. But Thread A is holding a thread hostage while waiting for Task B. The system deadlocks. (Thread Starvation Deadlock).
+- **Silent Failures:** If a task throws a `RuntimeException` inside an Executor and you don't call `future.get()`, the exception is swallowed silently and you will never know the task failed.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between `Runnable` and `Callable`?**
+  - **A:** `Runnable` returns `void` and cannot throw checked exceptions. `Callable` returns a result (via Generics) and can throw checked exceptions.
+
+### Intermediate
+- **Q: What happens if you call `submit()` on an Executor after calling `shutdown()`?**
+  - **A:** The Executor will throw a `RejectedExecutionException`. `shutdown()` tells the pool to finish its current queue but accept no new tasks.
+
+### Senior
+- **Q: Explain the danger of using `Executors.newFixedThreadPool(10)` in a production system handling millions of requests.**
+  - **A:** The factory method `newFixedThreadPool` uses an `LinkedBlockingQueue` under the hood, which has a default capacity of `Integer.MAX_VALUE`. If your 10 threads process tasks slower than users submit them, the queue will grow to hold millions of tasks, eventually causing an `OutOfMemoryError`. In strict production environments, you should construct the `ThreadPoolExecutor` manually using a bounded queue (e.g., max 1000 items) and define a Rejection Policy.
+
+## Common mistakes
+- **Forgetting to shut down:** An `ExecutorService` spawns non-daemon threads. If you forget to call `executor.shutdown()`, your Java application will never terminate, hanging indefinitely in the terminal.
+- **Blocking inside `.map()`:** Using `future.get()` inside a `for` loop to retrieve results sequentially destroys parallelization, as the main thread blocks on task 1 before even looking at task 2.
+
+## Best practices
+- Define reasonable boundaries. Never use unbounded queues for incoming network tasks.
+- If you have hundreds of asynchronous tasks that depend on each other, consider using `CompletableFuture` (Java 8) instead of raw `Executor` and `Future` logic.
+
+## Summary
+The Executor Framework elevated Java concurrency from dangerous manual thread manipulation to manageable, enterprise-grade resource pooling. By mastering Thread Pools, developers can build robust backend systems capable of processing millions of tasks efficiently without buckling under the load.
+
+## Related topics
+- [CompletableFuture](../completable-future)
+- [Multithreading](../multithreading)

@@ -1,0 +1,146 @@
+# Polymorphism
+
+## Introduction
+Polymorphism is the third major pillar of Object-Oriented Programming. The word comes from Greek, meaning "many forms." In programming, it refers to the ability of a single interface, method, or object to take on multiple different forms or behaviors depending on the context.
+
+## Problem Statement
+Imagine you have an array of different `Shape` objects: some `Circle`s, some `Square`s, and some `Triangle`s. You want to iterate through the array and calculate the area of each. 
+Without polymorphism, you would need complex `if-else` blocks:
+```java
+if (shape instanceof Circle) { ((Circle)shape).calculateCircleArea(); }
+else if (shape instanceof Square) { ((Square)shape).calculateSquareArea(); }
+```
+If you add a new shape (e.g., `Pentagon`), you have to go back and modify this `if-else` block everywhere in your code. This is a nightmare to maintain.
+
+## Why this exists
+To allow client code to interact with different classes through a single, uniform interface, eliminating the need for hard-coded type checks and massive `if-else` statements.
+
+## Real-world analogy
+Consider a Smartphone.
+The button on the side of the phone is polymorphic. 
+- If the phone is ringing, pressing it *mutes the call*.
+- If the phone is locked, pressing it *turns on the screen*.
+- If you are playing a game, pressing it *changes the volume*.
+It is the exact same button (the same method call), but it exhibits different behaviors depending on the current state/type of the application.
+
+## Definition
+The ability of different objects to respond to the same method call in their own unique way.
+
+## Key concepts
+
+There are two main types of Polymorphism in OOP:
+
+### 1. Compile-Time Polymorphism (Static Binding)
+Achieved through **Method Overloading**.
+- Multiple methods in the *same class* have the *same name* but different parameters (different number or types of arguments).
+- The compiler determines which method to call based on the arguments passed at compile time.
+
+### 2. Run-Time Polymorphism (Dynamic Binding)
+Achieved through **Method Overriding** (and Inheritance/Interfaces).
+- A child class provides a specific implementation for a method that is already defined in its parent class.
+- A parent class reference variable can point to a child class object (Upcasting).
+- The JVM determines which method to call at *runtime* based on the actual object type in memory, not the reference type.
+
+## Python/Java implementation
+
+### Java Implementation (Run-Time Polymorphism)
+```java
+// 1. Parent Class
+class Animal {
+    public void makeSound() {
+        System.out.println("Some generic animal sound");
+    }
+}
+
+// 2. Child Classes overriding the method
+class Dog extends Animal {
+    @Override
+    public void makeSound() {
+        System.out.println("Woof! Woof!");
+    }
+}
+
+class Cat extends Animal {
+    @Override
+    public void makeSound() {
+        System.out.println("Meow! Meow!");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        // Upcasting: Parent reference pointing to Child objects
+        Animal myDog = new Dog();
+        Animal myCat = new Cat();
+
+        // The exact same method call produces different behaviors at runtime!
+        myDog.makeSound(); // Output: Woof! Woof!
+        myCat.makeSound(); // Output: Meow! Meow!
+        
+        // The Array example from the problem statement:
+        Animal[] zoo = {new Dog(), new Cat(), new Animal()};
+        for (Animal animal : zoo) {
+            animal.makeSound(); // Dynamically calls the correct method for each
+        }
+    }
+}
+```
+
+### Java Implementation (Compile-Time Polymorphism / Overloading)
+```java
+class MathHelper {
+    // Same method name, different parameters
+    public int add(int a, int b) {
+        return a + b;
+    }
+
+    public double add(double a, double b) {
+        return a + b;
+    }
+
+    public int add(int a, int b, int c) {
+        return a + b + c;
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Payment Processors:** An interface `PaymentStrategy` has a `pay()` method. `CreditCardPayment`, `PayPalPayment`, and `CryptoPayment` implement it. The checkout system just calls `paymentMethod.pay()`, completely agnostic to *how* the specific payment is processed.
+2. **Notification Systems:** A `Notification` abstract class has a `send()` method. `EmailNotification`, `SMSNotification`, and `PushNotification` override it. The system iterates through a list of `Notification` objects and calls `send()` on all of them.
+3. **Drivers:** A `DatabaseConnection` interface has a `connect()` method. You can swap out a `MySQLConnection` object for a `PostgresConnection` object without changing the business logic, because both respond to the `connect()` method.
+
+## Pros
+- **Extensibility:** You can add new child classes (e.g., `BitcoinPayment`) without altering existing code that uses the parent interface. (This perfectly aligns with the Open/Closed Principle).
+- **Simplicity:** Replaces ugly `if-else` or `switch` statements based on object types.
+- **Code Decoupling:** Client code only needs to know about the parent interface, not the concrete child classes.
+
+## Cons
+- **Debugging Complexity:** Because the exact method executed is determined at runtime, it can be harder to trace code execution paths just by reading the source code (especially in massive codebases).
+
+## Interview questions
+
+### Beginner
+- **Q: What are the two types of Polymorphism?**
+  - **A:** Compile-time (Method Overloading) and Run-time (Method Overriding).
+
+### Intermediate
+- **Q: What is Upcasting?**
+  - **A:** Assigning an object of a child class to a reference variable of a parent class (e.g., `List<String> list = new ArrayList<>();`). This allows you to treat different child objects uniformly.
+
+### Senior
+- **Q: Can you override a `static` method in Java to achieve runtime polymorphism?**
+  - **A:** No. Static methods belong to the *class*, not the *instance*. If a child class has a static method with the same signature as the parent, it is called **Method Hiding**, not overriding. The method called is determined by the *reference type* at compile time, completely defeating dynamic runtime polymorphism.
+
+## Common mistakes
+- **Overusing `instanceof`:** If you find yourself writing `if (obj instanceof X) { ... } else if (obj instanceof Y) { ... }`, you are failing to use polymorphism. You should put that logic inside overridden methods in classes `X` and `Y`.
+- **Forgetting the `@Override` annotation:** In Java, always use `@Override`. It tells the compiler to check if you are actually overriding a method. If you make a typo in the method name, the compiler will catch it, preventing silent bugs where the method is accidentally overloaded instead.
+
+## Best practices
+- Always program to an Interface or Abstract class, rather than a concrete implementation (e.g., use `Map<K,V> map = new HashMap<>();` instead of `HashMap<K,V> map = new HashMap<>();`).
+
+## Summary
+Polymorphism is the secret sauce that makes Object-Oriented code truly flexible and maintainable. By allowing one interface to represent multiple distinct behaviors, developers can build systems that effortlessly accommodate new features without needing to rewrite existing logic.
+
+## Related topics
+- [Inheritance](../inheritance)
+- [SOLID: Open/Closed Principle](../../solid-principles/open-closed-principle)

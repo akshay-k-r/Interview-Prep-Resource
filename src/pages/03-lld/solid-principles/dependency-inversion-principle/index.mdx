@@ -1,0 +1,139 @@
+# Dependency Inversion Principle (DIP)
+
+## Introduction
+The Dependency Inversion Principle (DIP) is the "D" in SOLID. It dictates how high-level components and low-level components should interact, completely changing the traditional top-down approach to software architecture.
+
+## Problem Statement
+In traditional programming, high-level modules (which contain the complex business logic) depend directly on low-level modules (which handle basic tasks like disk I/O, database queries, or network calls).
+For example, a `StoreManager` class (high-level) directly instantiates a `MySQLDatabase` class (low-level). 
+If the business decides to switch from MySQL to MongoDB, you have to rip open the `StoreManager` and rewrite its core logic. The high-level, critical business rules are fragile because they are tightly coupled to specific, interchangeable low-level details.
+
+## Why this exists
+To decouple software modules. By inserting an abstraction (an interface) between the high-level and low-level modules, both can evolve independently. The high-level module doesn't care *what* database is being used, as long as it fulfills the contract.
+
+## Real-world analogy
+Consider a wall electrical outlet. 
+Your laptop (high-level module) needs electricity. It does not hardwire itself directly to the power plant (low-level module).
+Instead, there is an abstraction: the **Standard Wall Socket** (Interface). 
+- The laptop depends on the socket.
+- The power grid depends on the socket.
+Because of this abstraction, you can unplug your laptop from a coal power grid and plug it into a solar power grid without changing the laptop's internal wiring. The dependencies are inverted.
+
+## Definition
+1. **High-level modules should not depend on low-level modules. Both should depend on abstractions (interfaces).**
+2. **Abstractions should not depend on details. Details (classes) should depend on abstractions.**
+
+## Key concepts
+- **High-Level Modules:** The code that contains the core business rules and logic (e.g., `CheckoutService`).
+- **Low-Level Modules:** The code that does the grunt work (e.g., `StripeAPI`, `MySQLConnection`).
+- **Inversion of Control (IoC) / Dependency Injection (DI):** While DIP is the *principle*, DI is the *pattern* used to implement it. Instead of a class creating its own dependencies (`new MySQLDatabase()`), the dependencies are passed (injected) into it from the outside via the constructor.
+
+## Python/Java implementation
+
+### Bad Implementation (Violating DIP)
+```java
+// Low-level module
+class MySQLDatabase {
+    public void saveOrder(String orderId) {
+        System.out.println("Saving " + orderId + " to MySQL.");
+    }
+}
+
+// High-level module
+class CheckoutService {
+    // VIOLATION: High-level depends directly on Low-level concrete class
+    private MySQLDatabase db;
+
+    public CheckoutService() {
+        this.db = new MySQLDatabase(); // Tight coupling!
+    }
+
+    public void checkout(String orderId) {
+        // Business logic...
+        db.saveOrder(orderId);
+    }
+}
+```
+
+### Better Implementation (Following DIP)
+```java
+// 1. The Abstraction (Interface)
+interface Database {
+    void saveOrder(String orderId);
+}
+
+// 2. Low-level modules depend on the abstraction
+class MySQLDatabase implements Database {
+    public void saveOrder(String orderId) { System.out.println("Saving to MySQL"); }
+}
+
+class MongoDatabase implements Database {
+    public void saveOrder(String orderId) { System.out.println("Saving to MongoDB"); }
+}
+
+// 3. High-level module depends ONLY on the abstraction
+class CheckoutService {
+    private Database db;
+
+    // Dependency Injection! We pass the DB in, rather than creating it.
+    public CheckoutService(Database db) {
+        this.db = db;
+    }
+
+    public void checkout(String orderId) {
+        // Business logic...
+        db.saveOrder(orderId); // Agnostic to the actual DB used!
+    }
+}
+
+// 4. Usage (Wiring it together)
+public class Main {
+    public static void main(String[] args) {
+        // We can swap the database without touching CheckoutService
+        Database myDb = new MongoDatabase(); 
+        CheckoutService service = new CheckoutService(myDb);
+        service.checkout("Order123");
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Spring Framework (Java):** The entire Spring Boot framework is built on Dependency Injection. You define `@Service` and `@Repository` interfaces, and the Spring IoC Container automatically wires the low-level SQL repositories into your high-level business services at runtime.
+2. **Frontend UI (React):** A high-level `UserProfile` component needs user data. Instead of making the `fetch()` API call directly inside the component (violating DIP), you pass the `userData` down as a prop, or use a hook that abstracts the data-fetching layer.
+3. **Logging:** A `PaymentProcessor` doesn't instantiate `FileWriter` to log errors. It depends on an `ILogger` interface. At runtime, you inject a `ConsoleLogger` or a `SplunkLogger`.
+
+## Pros
+- **Testability:** This is the biggest advantage. If `CheckoutService` depends on an interface, you can pass in a "Mock" or "Fake" database during Unit Testing, allowing you to test the business logic without actually connecting to a real database.
+- **Flexibility:** Swapping out low-level technologies (e.g., migrating from AWS S3 to Google Cloud Storage) requires zero changes to the core business logic.
+
+## Cons
+- **Wiring Complexity:** Because classes no longer instantiate their own dependencies, some external entity (like a `Main` method or an IoC framework like Spring/Dagger) must figure out how to build the object graph and wire everything together.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the Dependency Inversion Principle?**
+  - **A:** It states that high-level modules should not depend on low-level modules; both should depend on abstractions (interfaces).
+
+### Intermediate
+- **Q: What is the difference between Dependency Inversion (DIP) and Dependency Injection (DI)?**
+  - **A:** DIP is the structural *principle* (depending on interfaces). DI is the *technique* used to achieve it (passing the concrete implementations via constructors or setters).
+
+### Senior
+- **Q: Explain how DIP relates to the "Ports and Adapters" (Hexagonal) architecture.**
+  - **A:** Hexagonal Architecture is the ultimate manifestation of DIP. The core business domain is entirely isolated in the center. It defines "Ports" (interfaces) for anything it needs (databases, APIs). The outside world provides "Adapters" (concrete implementations) that plug into those ports. The core domain has zero dependencies on external technologies.
+
+## Common mistakes
+- **Newing up objects:** Using the `new` keyword inside a business service class to instantiate a database, a network client, or a file writer is a massive red flag that DIP is being violated.
+
+## Best practices
+- Practice **Constructor Injection**: Pass dependencies into a class via its constructor. This explicitly declares what the class needs to function and ensures it is fully initialized before use.
+- Do not use Dependency Injection for simple "Data Objects" or DTOs (e.g., `new User("Alice")` is perfectly fine). DIP applies to *services* and *behavioral* objects.
+
+## Summary
+The Dependency Inversion Principle creates a strict boundary between business rules and technical details. By forcing both sides to talk through an abstraction (interface), the codebase becomes infinitely more testable, modular, and resilient to technological changes.
+
+## Related topics
+- [Open/Closed Principle](../open-closed-principle)
+- [Dependency Injection](../../design-principles/dependency-injection)
+- [Hexagonal Architecture](../../../01-design-patterns/structural/adapter)

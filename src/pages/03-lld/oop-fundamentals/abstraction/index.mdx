@@ -1,0 +1,144 @@
+# Abstraction
+
+## Introduction
+Abstraction is the process of hiding complex implementation details and showing only the essential features of an object to the outside world. It focuses on *what* an object does rather than *how* it does it.
+
+## Problem Statement
+Modern software systems are incredibly complex. If developers had to understand the internal electrical wiring of a hard drive just to save a text file, software development would be impossible. We need a way to provide a simple, clean interface to interact with complex subsystems.
+
+## Why this exists
+To reduce complexity and increase efficiency. By exposing only a high-level mechanism for using an object, developers can interact with complex code without needing to understand its internal intricacies.
+
+## Real-world analogy
+A Coffee Machine.
+When you want coffee, you press the "Make Coffee" button. 
+You don't need to know how the machine heats the water, measures the pressure, grinds the beans, or filters the grounds. The complex internal implementation is **abstracted** away from you. You interact only with a simple, clean interface (the button).
+
+## Definition
+The concept of hiding the internal details and showing only the functionality to the users.
+
+## Key concepts
+
+In OOP, Abstraction is achieved using two main tools:
+
+### 1. Abstract Classes
+- A class declared with the `abstract` keyword.
+- It **cannot be instantiated** (you cannot do `new AbstractClass()`).
+- It can contain both abstract methods (methods without a body that *must* be implemented by subclasses) and regular methods (with a body).
+- Used when subclasses share a lot of common code, but still need to define specific unique behaviors.
+
+### 2. Interfaces
+- A completely "empty" blueprint.
+- It contains only abstract methods (in modern Java, it can contain `default` methods, but generally represents a pure contract).
+- A class `implements` an interface, forcing it to write the code for all the methods defined in the interface.
+- Used to define a strict contract of *what* a class can do, regardless of where it sits in the inheritance tree.
+
+## Python/Java implementation
+
+### Java Implementation (Abstract Class)
+```java
+// 1. The Abstract Class (The conceptual idea)
+abstract class Vehicle {
+    // Regular method (common to all vehicles)
+    public void startEngine() {
+        System.out.println("Turning key. Engine starting...");
+    }
+
+    // Abstract method (implementation hidden/deferred to subclasses)
+    // "I know vehicles must drive, but I don't know HOW they drive yet."
+    public abstract void drive();
+}
+
+// 2. Concrete Class 1
+class Car extends Vehicle {
+    @Override
+    public void drive() {
+        System.out.println("Car is driving on 4 wheels using a steering wheel.");
+    }
+}
+
+// 3. Concrete Class 2
+class Motorcycle extends Vehicle {
+    @Override
+    public void drive() {
+        System.out.println("Motorcycle is driving on 2 wheels using handlebars.");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        // Vehicle v = new Vehicle(); // ERROR! Cannot instantiate an abstract class
+
+        Vehicle myCar = new Car();
+        myCar.startEngine(); // Inherited behavior
+        myCar.drive();       // Specific implementation
+    }
+}
+```
+
+### Java Implementation (Interface)
+```java
+// Pure abstraction
+interface PaymentGateway {
+    void processPayment(double amount);
+}
+
+class PayPal implements PaymentGateway {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing $" + amount + " via PayPal API...");
+        // Complex HTTP networking logic hidden here
+    }
+}
+
+class Stripe implements PaymentGateway {
+    @Override
+    public void processPayment(double amount) {
+        System.out.println("Processing $" + amount + " via Stripe SDK...");
+        // Complex SDK logic hidden here
+    }
+}
+```
+
+## Multiple real-world examples
+1. **JDBC (Java Database Connectivity):** Java provides interfaces like `Connection` and `Statement`. The complex network logic of talking to MySQL, Oracle, or Postgres is hidden inside their specific driver implementations. You just call `connection.createStatement()`.
+2. **Cloud Storage APIs:** An interface `CloudStorage` with methods `upload()` and `download()`. The implementations (`AmazonS3`, `GoogleCloud`, `Azure`) hide the massively complex REST API calls behind those simple methods.
+3. **Remote Controls:** The buttons on a TV remote are an abstraction for the infrared signal encoding happening on the circuit board.
+
+## Pros
+- **Reduces Complexity:** Users interact with a clean, simple API without worrying about the messy details.
+- **Security:** Hides internal mechanics from users, preventing them from messing with critical internal flows.
+- **Loose Coupling:** If you code to an interface, you can swap out the underlying implementation (e.g., swapping Stripe for PayPal) without changing the rest of your application.
+
+## Cons
+- **Over-engineering:** Creating layers of interfaces for tiny, simple scripts can unnecessarily bloat the codebase and make it hard to figure out where the *actual* code is written.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between an Abstract Class and an Interface?**
+  - **A:** An abstract class can have state (instance variables) and implemented methods, and a class can only extend ONE abstract class. An interface (traditionally) only has method signatures, no state, and a class can implement MULTIPLE interfaces.
+
+### Intermediate
+- **Q: If an abstract class can't be instantiated, can it have a constructor?**
+  - **A:** Yes! Abstract classes can have constructors. They are called using `super()` from the constructor of the child class to initialize the fields declared in the abstract class.
+
+### Senior
+- **Q: What is the difference between Encapsulation and Abstraction?**
+  - **A:** Encapsulation hides **data** (using private variables). Abstraction hides **complexity/implementation details** (using interfaces and abstract classes). Encapsulation is about protecting state; Abstraction is about providing a simple interface.
+
+## Common mistakes
+- **Creating "Header Interfaces":** Creating an interface with 10 methods, and only having exactly one class that implements it, just for the sake of "having an interface." If there will only ever be one implementation, an interface is often unnecessary boilerplate.
+- **Putting implementation details in interface names:** Naming an interface `MongoDbUserRepository` instead of `UserRepository`. The interface should be an abstraction; it shouldn't care about MongoDB.
+
+## Best practices
+- Follow the **Dependency Inversion Principle**: High-level modules should depend on abstractions (interfaces), not concrete implementations.
+- Name interfaces as adjectives or nouns indicating capabilities (e.g., `Runnable`, `Serializable`, `PaymentProcessor`).
+
+## Summary
+Abstraction is the technique that allows human minds to manage the astronomical complexity of modern software. By hiding the "how" and exposing only the "what" via Interfaces and Abstract Classes, we create plug-and-play architectures that are resilient to change and easy to understand.
+
+## Related topics
+- [Encapsulation](../encapsulation)
+- [Polymorphism](../polymorphism)
+- [SOLID: Dependency Inversion](../../solid-principles/dependency-inversion-principle)

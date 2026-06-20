@@ -1,0 +1,121 @@
+# Java Collections Framework
+
+## Introduction
+The Java Collections Framework (JCF) is a unified architecture for representing and manipulating collections of objects. It reduces programming effort by providing highly optimized, pre-built data structures and algorithms, allowing developers to focus on business logic rather than writing sorting arrays from scratch.
+
+## Problem Statement
+Before Collections existed (in early versions of Java), developers had to use raw Arrays, Vectors, or HashTables. Arrays have fixed sizes, meaning if you needed to add a 101st item to a 100-item array, you had to manually create a new array, copy the old items, and add the new one. 
+This manual data structure management was tedious, error-prone, and inefficient.
+
+## Why this exists
+To provide a standard set of interfaces (like `List`, `Set`, `Map`) and concrete implementations (like `ArrayList`, `HashSet`, `HashMap`) so that developers have a shared, high-performance toolkit for managing groups of objects dynamically.
+
+## Real-world analogy
+Think of Java Collections like different types of physical storage containers in a warehouse:
+- **List (Array):** A bookshelf where items are kept in a specific, numbered order. You can easily find the 5th book.
+- **Set:** A unique stamp collection. You cannot have duplicates. If you try to add a stamp you already own, it is rejected.
+- **Map (Dictionary):** A phone book. You look up a specific name (Key) to instantly find their phone number (Value).
+
+## Definition
+A framework that provides an architecture to store and manipulate a group of objects as a single unit. It includes Interfaces, Implementations (Classes), and Algorithms (Static methods like `Collections.sort()`).
+
+## Key concepts & Interfaces
+
+The hierarchy is split into two main trees: `Collection` and `Map`.
+
+### 1. The `Collection` Interface
+- **`List` Interface:** An ordered collection (sequence). Allows duplicate elements.
+  - *`ArrayList`:* Fast iteration and fast random access (O(1)). Slow insertions/deletions in the middle (O(n)).
+  - *`LinkedList`:* Fast insertions/deletions (O(1)). Slow random access (O(n)).
+- **`Set` Interface:** An unordered collection that contains NO duplicates.
+  - *`HashSet`:* Very fast operations (O(1)). Unpredictable iteration order.
+  - *`TreeSet`:* Slower operations (O(log n)), but elements are automatically sorted.
+  - *`LinkedHashSet`:* Maintains insertion order while guaranteeing uniqueness.
+- **`Queue` / `Deque` Interface:** A collection designed for holding elements prior to processing (FIFO or LIFO).
+  - *`PriorityQueue`:* Elements are processed based on their priority/sorting, not insertion order.
+
+### 2. The `Map` Interface (Does not extend Collection)
+An object that maps keys to values. Keys must be unique.
+- *`HashMap`:* Fast (O(1)) lookups. Unpredictable iteration order.
+- *`TreeMap`:* Slower (O(log n)) lookups, but keys are automatically sorted.
+- *`LinkedHashMap`:* Maintains insertion order of keys.
+- *`ConcurrentHashMap`:* Thread-safe highly optimized map for multithreaded environments.
+
+## Python/Java implementation
+
+### Java Implementation
+```java
+import java.util.*;
+
+public class CollectionExamples {
+    public static void main(String[] args) {
+        
+        // --- LIST ---
+        // Best for ordered, indexed access
+        List<String> list = new ArrayList<>();
+        list.add("Apple");
+        list.add("Banana");
+        list.add("Apple"); // Duplicates allowed
+        System.out.println(list.get(1)); // Output: Banana
+
+        // --- SET ---
+        // Best for guaranteeing uniqueness
+        Set<String> set = new HashSet<>();
+        set.add("Apple");
+        set.add("Banana");
+        set.add("Apple"); // Duplicate ignored
+        System.out.println(set.size()); // Output: 2
+
+        // --- MAP ---
+        // Best for Key-Value lookups
+        Map<String, Integer> map = new HashMap<>();
+        map.put("Alice", 25);
+        map.put("Bob", 30);
+        map.put("Alice", 26); // Overwrites previous value for "Alice"
+        System.out.println(map.get("Alice")); // Output: 26
+        
+        // --- ITERATION ---
+        for (Map.Entry<String, Integer> entry : map.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+}
+```
+
+## Pros
+- **Reduces Programming Effort:** No need to write sorting, searching, or dynamic array resizing logic.
+- **Increases Performance:** The built-in implementations are highly optimized by the JVM developers.
+- **Interoperability:** Because all APIs use standard interfaces (`List`, `Map`), it's incredibly easy to pass collections between different libraries and APIs.
+
+## Cons
+- **Memory Overhead:** Collections can only store Objects, not Primitives (e.g., `Integer` instead of `int`). This "Autoboxing" creates significant memory overhead and garbage collection pressure in extreme high-performance applications (which is why big data libraries sometimes write their own primitive collections).
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between an `ArrayList` and a `LinkedList`?**
+  - **A:** `ArrayList` uses a dynamic array underneath. It is great for fast, random access (reading), but slow at inserting/deleting in the middle. `LinkedList` uses doubly-linked nodes. It is slow for random access, but fast for inserting/deleting in the middle.
+
+### Intermediate
+- **Q: How does a `HashMap` work internally?**
+  - **A:** It uses an array of "buckets." When you call `put(Key, Value)`, it calculates the `.hashCode()` of the key to determine the array index. It stores the Key-Value pair there. If two keys hash to the same index (a Collision), it stores them in a LinkedList (or a balanced Tree in Java 8+) at that index.
+
+### Senior
+- **Q: Why shouldn't you use `Hashtable` or `Vector` in modern Java?**
+  - **A:** `Hashtable` and `Vector` are legacy classes from Java 1.0. Almost all of their methods are `synchronized`, making them thread-safe but incredibly slow in single-threaded environments due to lock overhead. Modern Java uses `HashMap` and `ArrayList` by default, and `ConcurrentHashMap` or `Collections.synchronizedList()` when thread safety is actually needed.
+
+## Common mistakes
+- **Modifying a collection while iterating:** Using a standard `for-each` loop and calling `list.remove(item)` inside it will throw a `ConcurrentModificationException`. 
+  - *Fix:* Use an `Iterator` and call `iterator.remove()`, or use Java 8 `list.removeIf()`.
+- **Mutable keys in HashMaps:** Using an object as a Key in a `HashMap`, and then modifying that object's fields so its `hashCode` changes. You will never be able to find the value in the map again. Map keys should almost always be Immutable (like `String`).
+
+## Best practices
+- **Program to Interfaces:** Always use the interface type for variable declarations (e.g., `List<String> list = new ArrayList<>();`). This allows you to effortlessly swap implementations later.
+- If you know exactly how many items you are adding, pre-allocate the capacity: `new ArrayList<>(1000)` to avoid expensive background array resizing.
+
+## Summary
+The Java Collections Framework is the most heavily used API in the entire Java ecosystem. Mastering the differences between Lists, Sets, and Maps, and knowing exactly when to use an `ArrayList` versus a `HashSet`, is the absolute baseline requirement for any Java developer.
+
+## Related topics
+- [Hash Tables](../../../04-dsa-patterns/hash-tables)
+- [Arrays & Strings](../../../04-dsa-patterns/arrays-strings)

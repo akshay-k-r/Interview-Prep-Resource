@@ -1,0 +1,119 @@
+# Open/Closed Principle (OCP)
+
+## Introduction
+The Open/Closed Principle is the "O" in SOLID. It dictates how software entities (classes, modules, functions) should be designed to accommodate future growth and new features without breaking existing code.
+
+## Problem Statement
+Imagine you have an `OrderProcessor` class. Initially, it only processes Credit Cards. 
+Six months later, the business wants to add PayPal. You open the `OrderProcessor` class and add an `if (paymentType == "PayPal")` statement.
+A year later, they want Crypto. You open it again and add another `if-else`. 
+Every time you open this class to modify it, you risk breaking the existing, working Credit Card logic. You have to re-test the entire class.
+
+## Why this exists
+To allow systems to grow and add new features seamlessly, without the risk of introducing bugs into old, stable, tested code.
+
+## Real-world analogy
+Consider a desktop computer.
+If you want to add a new graphics card, you don't use a soldering iron to physically rewire the motherboard. The motherboard is **closed for modification**. 
+Instead, you simply plug the new graphics card into a standard expansion slot (PCIe). The motherboard is **open for extension**.
+
+## Definition
+**"Software entities (classes, modules, functions, etc.) should be open for extension, but closed for modification."** — Bertrand Meyer
+
+- **Open for extension:** You can add new behaviors/features.
+- **Closed for modification:** You do not modify the existing source code of the module.
+
+## Key concepts
+- **Polymorphism:** OCP is almost always achieved using Polymorphism (Interfaces or Abstract Classes).
+- **Interfaces / Contracts:** By programming to an interface, you can inject new implementations without changing the class that consumes the interface.
+
+## Python/Java implementation
+
+### Bad Implementation (Violating OCP)
+```java
+class DiscountCalculator {
+    public double calculate(String customerType, double price) {
+        // Every time a new customer type is added, we MUST MODIFY this method.
+        if (customerType.equals("Regular")) {
+            return price;
+        } else if (customerType.equals("Premium")) {
+            return price * 0.9; // 10% off
+        } else if (customerType.equals("VIP")) {
+            return price * 0.8; // 20% off
+        }
+        return price;
+    }
+}
+```
+
+### Better Implementation (Following OCP)
+```java
+// 1. Create an Abstraction
+interface CustomerDiscount {
+    double applyDiscount(double price);
+}
+
+// 2. Create concrete implementations
+class RegularCustomer implements CustomerDiscount {
+    public double applyDiscount(double price) { return price; }
+}
+
+class PremiumCustomer implements CustomerDiscount {
+    public double applyDiscount(double price) { return price * 0.9; }
+}
+
+class VipCustomer implements CustomerDiscount {
+    public double applyDiscount(double price) { return price * 0.8; }
+}
+
+// 3. The main class uses the abstraction
+class DiscountCalculator {
+    // This class is now CLOSED for modification. 
+    // If we add an "EmployeeCustomer", this code DOES NOT CHANGE.
+    public double calculate(CustomerDiscount customer, double price) {
+        return customer.applyDiscount(price);
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Notification Systems:** A `NotificationService` takes a `List<Sender>` interface. You can add an `SmsSender`, `EmailSender`, or `PushSender` later without touching the core `NotificationService`.
+2. **Sorting Algorithms:** `Collections.sort()` takes a `Comparator` interface. You can invent entirely new sorting logic for your custom objects, and Java's built-in `sort()` method can execute it without Java's source code needing to be modified.
+3. **Browser Plugins:** Chrome is closed for modification (you can't edit Chrome's source code), but it is open for extension via its Extension API.
+
+## Pros
+- **Safety:** Old, tested code is not touched, minimizing regression bugs.
+- **Scalability:** New features are added by simply creating new classes, making the system highly modular and scalable.
+- **Parallel Development:** Developer A can write the `PayPalPayment` class while Developer B writes the `CryptoPayment` class, without merge conflicts in a central `PaymentProcessor` file.
+
+## Cons
+- **Over-engineering:** Trying to make *everything* perfectly extensible from day one leads to a massive explosion of interfaces and abstract classes (YAGNI violation). Sometimes a simple `if-else` is fine if the business rules rarely change.
+
+## Interview questions
+
+### Beginner
+- **Q: What does "Open for Extension, Closed for Modification" mean?**
+  - **A:** It means you should be able to add new functionality to a system (open for extension) without altering the existing, working source code (closed for modification).
+
+### Intermediate
+- **Q: How is OCP typically implemented in Java/C++?**
+  - **A:** Using Polymorphism (Interfaces or Abstract classes). The core class depends on an interface, and new features are added by creating new classes that implement that interface.
+
+### Senior
+- **Q: Should every single class be designed to satisfy OCP from the start?**
+  - **A:** No. Anticipating every possible future change leads to abstract, unreadable code. A better approach is "Fool me once, shame on you. Fool me twice, shame on me." Write the simple `if` statement first. The *second* time you have to modify that `if` statement for a new requirement, refactor it to follow OCP.
+
+## Common mistakes
+- **Hardcoding Switch Statements:** Massive `switch` statements based on ENUM types are a classic red flag for OCP violations.
+
+## Best practices
+- Identify the parts of your application that change frequently (e.g., Payment Methods, Export Formats, Discount Rules) and apply OCP there.
+- Use Design Patterns like the **Strategy Pattern** or **Decorator Pattern**, which are essentially just formal implementations of OCP.
+
+## Summary
+The Open/Closed Principle ensures that as software requirements grow, the codebase grows by *addition* (adding new classes) rather than by *mutation* (modifying old classes). This results in a stable, resilient system where new features don't break old functionality.
+
+## Related topics
+- [Polymorphism](../../oop-fundamentals/polymorphism)
+- [Single Responsibility Principle](../single-responsibility-principle)
+- [Strategy Pattern](../../../01-design-patterns/behavioral/strategy)

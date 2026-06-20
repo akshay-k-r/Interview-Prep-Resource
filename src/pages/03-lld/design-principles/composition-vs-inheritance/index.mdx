@@ -1,0 +1,129 @@
+# Composition vs Inheritance
+
+## Introduction
+"Favor Composition over Inheritance" is one of the most widely cited design principles in Object-Oriented Programming, heavily popularized by the *Gang of Four* Design Patterns book. It dictates how objects should be designed to reuse code.
+
+## Problem Statement
+Inheritance (IS-A) is the first tool developers reach for to reuse code. 
+Imagine building a game. You have an `Animal` base class with a `move()` method. You create a `Dog` that inherits `Animal`. Great.
+Now you need a `Bird`. It inherits `Animal`, but it needs to `fly()`. You put `fly()` in `Bird`.
+Now you need a `Duck`. A Duck IS-A `Bird` (so it inherits `fly()`), but it also swims. So you make it inherit from a new `SwimmingAnimal` class? Java doesn't allow multiple inheritance. 
+If you put `swim()` and `fly()` in the base `Animal` class, then the `Dog` inherits `fly()`. 
+Deep inheritance trees quickly become incredibly brittle, rigid, and impossible to logically manage. This is known as the **Gorilla Banana Problem**: "You wanted a banana but what you got was a gorilla holding the banana and the entire jungle."
+
+## Why this exists
+To create flexible, modular software. Composition allows you to build complex behaviors by assembling small, interchangeable components at runtime, rather than locking behaviors into rigid compile-time class hierarchies.
+
+## Real-world analogy
+- **Inheritance (IS-A):** A generic `Smartphone` class. An `iPhone` IS-A `Smartphone`. It inherits the screen and battery from the parent design. If Apple changes the parent design, all iPhones change.
+- **Composition (HAS-A):** Building a PC. A computer doesn't *inherit* from a Graphics Card. A computer **HAS-A** Graphics Card, **HAS-A** CPU, and **HAS-A** Hard Drive. If you want better graphics, you simply swap the component. You don't have to redesign the entire computer hierarchy.
+
+## Definition
+- **Inheritance:** Designing classes based on what they *are*. (Whitebox reuse).
+- **Composition:** Designing classes based on what they *have* or what they *do*, by injecting independent components into a class. (Blackbox reuse).
+
+## Python/Java implementation
+
+### Bad Implementation (Inheritance)
+```java
+class Enemy {
+    public void attack() { System.out.println("Attacking!"); }
+}
+
+// Seems fine at first...
+class FlyingEnemy extends Enemy {
+    public void fly() { System.out.println("Flying!"); }
+}
+
+class SwimmingEnemy extends Enemy {
+    public void swim() { System.out.println("Swimming!"); }
+}
+
+// THE FATAL FLAW: What if we want a Flying AND Swimming enemy (like a Dragon)?
+// We can't extend both! The inheritance tree is broken.
+class Dragon extends FlyingEnemy {
+    // We have to duplicate the swim() code here!
+    public void swim() { System.out.println("Swimming!"); } 
+}
+```
+
+### Better Implementation (Composition)
+```java
+// 1. Define distinct Behaviors (Components)
+interface FlyBehavior { void fly(); }
+interface SwimBehavior { void swim(); }
+
+class Wings implements FlyBehavior {
+    public void fly() { System.out.println("Flapping wings!"); }
+}
+
+class Fins implements SwimBehavior {
+    public void swim() { System.out.println("Paddling fins!"); }
+}
+
+// 2. The main class HAS behaviors, it doesn't inherit them.
+class Enemy {
+    private FlyBehavior flyBehavior;
+    private SwimBehavior swimBehavior;
+
+    // We can mix and match components!
+    public Enemy(FlyBehavior f, SwimBehavior s) {
+        this.flyBehavior = f;
+        this.swimBehavior = s;
+    }
+
+    public void performFly() {
+        if (flyBehavior != null) flyBehavior.fly();
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        // Build a Dragon dynamically using composition!
+        Enemy dragon = new Enemy(new Wings(), new Fins());
+        dragon.performFly();
+    }
+}
+```
+
+## Multiple real-world examples
+1. **React / UI Frameworks:** Modern UI frameworks strongly favor composition. Instead of creating a `RedRoundedButton` class that inherits from `Button`, React uses composition: `<Button><Icon /><Text color="red" /></Button>`. You compose the UI using small, independent building blocks.
+2. **Entity-Component-System (ECS) in Game Dev:** Unity and Unreal Engine abandoned deep inheritance trees years ago. A Game Object in Unity is just an empty shell. You give it behavior by *attaching* components to it (HAS-A `Transform`, HAS-A `Collider`, HAS-A `Renderer`).
+3. **Decorators:** The Java I/O library uses composition. `new BufferedReader(new FileReader("data.txt"))`. The `BufferedReader` doesn't inherit from `FileReader`; it *contains* it and enhances its behavior.
+
+## Pros
+- **Flexibility:** You can swap behaviors at runtime (e.g., swapping a character's weapon component from Sword to Bow).
+- **Prevents Class Explosion:** Instead of creating 100 classes for every possible combination of behaviors (`FlyingSwimmingFireBreathingEnemy`), you create 3 components and assemble them.
+- **Easier Testing:** You can easily mock individual components when testing.
+
+## Cons
+- **Boilerplate:** Composition requires more initial setup. You have to create interfaces, component classes, and pass them into constructors, whereas inheritance is just a quick `extends` keyword.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between IS-A and HAS-A?**
+  - **A:** "IS-A" represents Inheritance (A Car IS-A Vehicle). "HAS-A" represents Composition (A Car HAS-A Engine).
+
+### Intermediate
+- **Q: Why is deep inheritance considered an anti-pattern?**
+  - **A:** Deep inheritance trees suffer from the "Fragile Base Class" problem. A change in the root parent class ripples down and can unexpectedly break behaviors in deeply nested child classes. It also makes the code very hard to read because logic is scattered across multiple file levels.
+
+### Senior
+- **Q: Does this mean we should NEVER use inheritance?**
+  - **A:** No. Inheritance is perfectly fine for pure, strict taxonomies where the IS-A relationship will never be violated (e.g., `CustomException extends Exception`). But for reusing behavior or sharing code, Composition should be the default choice.
+
+## Common mistakes
+- **Extending utility classes:** Making a `User` class `extend StringUtils` just so the user class can easily use string formatting methods. This is an abuse of inheritance.
+
+## Best practices
+- Design your software as Legos. Build small, single-purpose pieces that can be snapped together to form complex objects.
+- If you cannot definitively say "Subclass IS-A Superclass", use Composition.
+
+## Summary
+"Favor Composition over Inheritance" warns developers against the rigidity of compile-time class hierarchies. By building objects that *contain* behaviors rather than *inheriting* them, developers can create highly modular, flexible systems that easily adapt to changing requirements.
+
+## Related topics
+- [Inheritance](../../oop-fundamentals/inheritance)
+- [Strategy Pattern](../../../01-design-patterns/behavioral/strategy)
+- [Decorator Pattern](../../../01-design-patterns/structural/decorator)

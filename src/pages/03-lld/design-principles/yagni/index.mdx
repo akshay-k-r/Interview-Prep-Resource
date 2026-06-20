@@ -1,0 +1,91 @@
+# YAGNI (You Aren't Gonna Need It)
+
+## Introduction
+YAGNI (You Aren't Gonna Need It) is a principle from Extreme Programming (XP) that states a programmer should not add functionality until deemed necessary. 
+
+## Problem Statement
+Developers are notorious for trying to predict the future. While building a simple user login system, a developer might think: *"Eventually, we'll probably need to support OAuth, SAML, Biometric login, and 2FA. I should build the database architecture and interfaces to support all of that right now."*
+- **Result:** The developer spends 3 weeks building a massively complex authentication system instead of 3 days. 
+- **The Reality:** The startup pivots, they only ever need basic email login, and the developer just wasted 3 weeks building and maintaining "ghost code" that will never be executed.
+
+## Why this exists
+To prevent wasted time, reduce codebase bloat, and maintain agility. Code is a liability, not an asset. Every line of code you write must be tested, maintained, and read by future developers. Writing code for future "maybes" slows the entire team down today.
+
+## Real-world analogy
+Imagine packing for a weekend trip to a sunny beach. 
+- **Following YAGNI:** You pack a swimsuit, t-shirts, and sunscreen.
+- **Violating YAGNI:** You think, *"What if it snows? What if I get invited to a formal gala? What if I need to chop wood?"* You pack a winter parka, a tuxedo, and an axe. You now have to lug around a 100lb suitcase for a weekend beach trip.
+
+## Definition
+**"Always implement things when you actually need them, never when you just foresee that you need them."** — Ron Jeffries
+
+## Key concepts
+- **Speculative Design:** The anti-pattern of writing code based on assumptions of future requirements.
+- **Lean Software Development:** YAGNI aligns perfectly with Lean/Agile philosophies: deliver exactly what the customer needs right now, get feedback, and iterate.
+
+## Python/Java implementation
+
+### Bad Implementation (Violating YAGNI)
+```java
+// We only need to export to CSV right now.
+// But the developer thinks "We'll definitely need PDF and Excel eventually!"
+interface ReportExporter {
+    void exportCsv();
+    void exportPdf();    // Throws NotImplementedException for the next 3 years
+    void exportExcel();  // Throws NotImplementedException for the next 3 years
+    void exportXml();    // Throws NotImplementedException for the next 3 years
+}
+```
+
+### Better Implementation (Following YAGNI)
+```java
+// Just build what is requested today.
+interface ReportExporter {
+    void exportCsv();
+}
+
+// When the business actually asks for PDF 6 months from now, 
+// THAT is when you add the exportPdf() method.
+```
+
+## Multiple real-world examples
+1. **Database Columns:** Adding `phone_number_2`, `fax_number`, and `pager_number` to a database schema just in case, when the business only asked for `email`.
+2. **Over-abstracting:** Creating a complex `AbstractRepositoryFactoryProvider` hierarchy because you "might switch databases someday," when a simple direct database connection is fine for the MVP.
+3. **Third-party Libraries:** Importing a massive 50MB charting library into your frontend app just to draw a single bar chart, because "we might need complex scatter plots later."
+
+## Pros
+- **Speed to Market:** You deliver working features much faster because you aren't building unused infrastructure.
+- **Cleaner Codebase:** No "dead code" or confusing abstract methods that are never actually called.
+- **Flexibility:** When the "future" actually arrives, the requirements are almost always different than what you predicted. By waiting, you build exactly what is needed based on real facts, not guesses.
+
+## Cons
+- **Technical Debt:** The main argument against YAGNI is that if you don't design for the future, you'll have to rewrite everything later. (However, modern Agile advocates argue that refactoring simple code later is still cheaper than maintaining complex, unused code now).
+- **Extremism:** Taking YAGNI to the extreme means writing terrible, hard-coded scripts. YAGNI does *not* mean writing bad code; it means writing clean, well-structured code for *today's* requirements.
+
+## Interview questions
+
+### Beginner
+- **Q: What does YAGNI stand for?**
+  - **A:** You Aren't Gonna Need It.
+
+### Intermediate
+- **Q: How is YAGNI different from KISS?**
+  - **A:** KISS is about *how* you write the code (make it simple, not complex). YAGNI is about *whether* you write the code at all (don't build features until they are requested).
+
+### Senior
+- **Q: Does YAGNI conflict with the Open/Closed Principle (OCP)?**
+  - **A:** They can seem to. OCP says to design for future extension. YAGNI says don't build for the future. The balance is: design your architecture cleanly so that it *can* be extended (OCP), but do not actually write the extensions or complex interfaces until the specific business requirement arrives (YAGNI).
+
+## Common mistakes
+- **"But what if..." Syndrome:** Justifying complex code during code reviews based entirely on hypothetical future scenarios that aren't on the product roadmap.
+
+## Best practices
+- If a product manager doesn't ask for it, don't build it.
+- Trust in your ability (and your test suite's ability) to refactor the code easily in the future when the new requirement actually arrives.
+
+## Summary
+YAGNI forces developers to be ruthlessly pragmatic. By avoiding speculative engineering, teams keep their codebases lean, their development cycles fast, and their focus entirely on delivering immediate value to the user.
+
+## Related topics
+- [KISS (Keep It Simple, Stupid)](../kiss)
+- [DRY (Don't Repeat Yourself)](../dry)

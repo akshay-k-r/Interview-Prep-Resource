@@ -1,0 +1,147 @@
+# Exception Handling
+
+## Introduction
+Exception Handling is a mechanism in Java to handle runtime errors, ensuring that the normal flow of the application can be maintained or gracefully terminated. It prevents a minor error from crashing the entire server.
+
+## Problem Statement
+When a program tries to open a file that doesn't exist, or divide a number by zero, or connect to a database that is offline, the JVM stops execution and crashes. In enterprise software, a single bad database connection cannot be allowed to crash the entire application serving thousands of other users.
+
+## Why this exists
+To provide a robust, structured way to catch anomalous events (Exceptions), run specific "fallback" or "recovery" code, and continue executing the rest of the application safely.
+
+## Real-world analogy
+Imagine driving a car. 
+- A **normal execution** is driving down the highway.
+- A **checked exception** is a low fuel light. You know it might happen, you check for it, and you have a plan (pull into a gas station).
+- An **unchecked exception (Runtime)** is a tire blowing out. You didn't write code expecting it at that exact moment, but when it happens, you swerve to the shoulder to handle it.
+- An **Error** is the engine physically exploding. There is no catching or recovering from this. The trip is over.
+
+## Definition
+The process of responding to the occurrence of exceptions (anomalous or exceptional conditions) during computation.
+
+## Key concepts & Hierarchy
+
+In Java, everything inherits from `Throwable`.
+1. **`Error`:** Serious problems that a reasonable application should not try to catch (e.g., `OutOfMemoryError`, `StackOverflowError`). The JVM is dying.
+2. **`Exception`:** Conditions that a reasonable application might want to catch.
+   - **Checked Exceptions:** Exceptions checked at *compile-time*. The compiler forces you to either `catch` it or declare that your method `throws` it (e.g., `IOException`, `SQLException`).
+   - **Unchecked Exceptions (RuntimeExceptions):** Exceptions that occur at *run-time*. The compiler does not force you to handle them (e.g., `NullPointerException`, `IndexOutOfBoundsException`).
+
+## Python/Java implementation
+
+### Java Implementation
+```java
+import java.io.*;
+
+public class ExceptionExample {
+
+    // 1. Declaring a Checked Exception
+    public void readFile(String path) throws IOException {
+        FileReader file = new FileReader(path);
+        BufferedReader fileInput = new BufferedReader(file);
+        
+        // Print first 3 lines
+        for (int counter = 0; counter < 3; counter++) {
+            System.out.println(fileInput.readLine());
+        }
+        fileInput.close();
+    }
+
+    public static void main(String[] args) {
+        ExceptionExample example = new ExceptionExample();
+
+        // 2. Handling the Exception (Try-Catch-Finally)
+        try {
+            // Code that might throw an exception
+            System.out.println("Trying to read file...");
+            example.readFile("missing_file.txt");
+            System.out.println("This line will NEVER print if exception occurs.");
+            
+        } catch (FileNotFoundException e) {
+            // Specific catch
+            System.err.println("Error: File was not found!");
+            
+        } catch (IOException e) {
+            // Broader catch (must come AFTER specific catches)
+            System.err.println("Error: Some other IO problem occurred.");
+            
+        } finally {
+            // 3. Finally block ALWAYS runs, even if exception occurs or method returns.
+            // Used for cleanup (closing connections, releasing locks).
+            System.out.println("Execution finished. Cleaning up resources...");
+        }
+    }
+}
+```
+
+### Try-With-Resources (Java 7+)
+A modern, cleaner way to handle things like files and database connections. It automatically closes the resources, eliminating the need for an ugly `finally` block.
+```java
+public void readModernWay(String path) {
+    // The resource inside () implements AutoCloseable. It closes automatically!
+    try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+        System.out.println(br.readLine());
+    } catch (IOException e) {
+        System.err.println("Failed to read.");
+    }
+}
+```
+
+## Custom Exceptions
+It is highly recommended to create custom exceptions for your specific business logic.
+```java
+// Custom Unchecked Exception
+class InsufficientFundsException extends RuntimeException {
+    public InsufficientFundsException(String message) {
+        super(message);
+    }
+}
+
+class BankAccount {
+    public void withdraw(double amount) {
+        if (amount > 1000) {
+            throw new InsufficientFundsException("Cannot withdraw " + amount);
+        }
+    }
+}
+```
+
+## Pros
+- **Separation of Concerns:** Error handling code is separated from the main business logic (unlike C-style `if (returnCode == -1)` checks).
+- **Propagation:** An exception can bubble up the call stack automatically until it finds a method equipped to handle it.
+
+## Cons
+- **Performance Overhead:** Throwing an exception is relatively expensive in Java because it has to capture the entire stack trace at the exact moment the exception occurs. Exceptions should not be used for normal control flow (e.g., using `try/catch` to exit a `while` loop).
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between `throw` and `throws`?**
+  - **A:** `throw` is used inside a method body to actually trigger and throw an exception object (e.g., `throw new Exception();`). `throws` is used in the method signature to declare that this method *might* throw an exception, passing the responsibility to the caller.
+
+### Intermediate
+- **Q: Does the `finally` block run if you put a `return` statement inside the `try` block?**
+  - **A:** Yes. The `finally` block will always execute just before the method actually returns. The *only* time `finally` does not run is if you call `System.exit(0)` or the JVM crashes completely (e.g., power outage).
+
+### Senior
+- **Q: Why are Checked Exceptions highly controversial, and why do newer languages (like Kotlin and C#) not have them?**
+  - **A:** Checked exceptions often force developers to write empty, meaningless `catch` blocks just to make the compiler happy, or force them to pollute every method signature all the way up the stack with `throws SQLException`. Most modern Java frameworks (like Spring) wrap all checked exceptions into RuntimeExceptions to avoid this boilerplate.
+
+## Common mistakes
+- **Swallowing Exceptions:**
+  ```java
+  try { doSomething(); } catch (Exception e) { /* Do nothing */ }
+  ```
+  This is the worst sin in Java programming. An error occurred, but you hid it. The program will continue in an invalid state and crash later, making debugging impossible. Always at least log the exception.
+- **Catching `Exception` or `Throwable`:** Catching the top-level `Exception` class is a bad practice. It catches *everything*, including `NullPointerExceptions` which indicate a bug in your code that you should fix, not a recoverable state you should catch.
+
+## Best practices
+- Prefer **Unchecked Exceptions** (RuntimeExceptions) for business logic errors.
+- Fail Fast: Throw an exception as soon as bad input is detected, rather than letting it propagate deep into the system.
+
+## Summary
+Exception handling is the backbone of robust software. By properly utilizing the `try-catch-finally` structure and creating meaningful Custom Exceptions, developers ensure their applications can gracefully recover from inevitable network drops, file errors, and invalid data.
+
+## Related topics
+- [File I/O](../file-io)
+- [Java Collections](../collections)

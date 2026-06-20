@@ -1,0 +1,106 @@
+# Garbage Collection (GC)
+
+## Introduction
+Garbage Collection (GC) is a background daemon process in the Java Virtual Machine (JVM) that automatically manages memory. It identifies and deletes objects in the Heap memory that are no longer in use by the program, freeing up space for new objects.
+
+## Problem Statement
+In languages like C and C++, developers must manually allocate memory using `malloc()` and, crucially, manually free it using `free()`. 
+If a developer forgets to free memory, the application slowly consumes all RAM until the server crashes (Memory Leak). If a developer accidentally frees memory that is still being used, the application crashes immediately (Dangling Pointer / Segmentation Fault). Managing memory manually is the source of billions of dollars in software bugs and security vulnerabilities.
+
+## Why this exists
+To eliminate human error from memory management. By automating the cleanup of dead objects, Java allows developers to focus entirely on business logic, resulting in vastly safer and more stable code.
+
+## Real-world analogy
+Think of a busy restaurant dining room (The Heap).
+Customers (Threads) sit down, and the waiter brings plates of food (Objects). 
+- **C++ (Manual):** The customer must explicitly tell the busboy to take away their plate when they finish a specific dish. If they forget, the table fills up and no more food can arrive.
+- **Java (Garbage Collection):** A busboy (The Garbage Collector) constantly patrols the dining room. If they see a plate that the customer is clearly no longer eating from (an unreachable object), they quietly take it away without the customer having to do anything.
+
+## Definition
+The automated process of looking at heap memory, identifying which objects are in use and which are not, and deleting the unused objects.
+
+## Key concepts
+
+### 1. Reachability (Mark and Sweep)
+How does the GC know an object is "dead"?
+- The JVM identifies **GC Roots** (Active threads, Static variables, Local variables in active method stacks).
+- **Mark Phase:** The GC starts at the Roots and traverses all object references (like a massive graph). Every object it touches is "Marked" as Alive.
+- **Sweep Phase:** Any object in the Heap that is NOT marked is considered dead (unreachable) and its memory is reclaimed.
+
+### 2. Generational Hypothesis
+IBM engineers discovered that **"Most objects die young."** A temporary string created inside a `for` loop is useless a millisecond later.
+Because of this, the JVM divides the Heap into "Generations":
+1. **Young Generation (Eden + Survivor Spaces):** All new objects are created here. It fills up quickly. A "Minor GC" runs frequently here, rapidly cleaning up short-lived objects.
+2. **Old Generation (Tenured):** If an object survives multiple Minor GCs (e.g., a long-lived Database Connection pool), it is promoted to the Old Generation. "Major GCs" run here infrequently, as checking massive long-lived structures is slow.
+
+### 3. "Stop-The-World" (STW) Pauses
+When the Garbage Collector runs, especially during a Major GC or compacting phase, it must temporarily freeze all application threads to safely move objects around in memory. This freeze is called a "Stop-The-World" pause.
+
+## Types of Garbage Collectors in Java
+
+Over the years, Java has introduced increasingly advanced GCs to minimize "Stop-The-World" pauses.
+1. **Serial GC:** Uses a single thread. Good for tiny apps or simple command-line tools.
+2. **Parallel GC (Throughput Collector):** Uses multiple threads. Maximizes total throughput but can have long STW pauses.
+3. **G1 GC (Garbage-First):** The default in modern Java (Java 9+). It divides the heap into hundreds of small regions and aggressively cleans the regions with the most garbage first. Highly predictable pause times.
+4. **ZGC & Shenandoah (Java 15+):** Ultra-low latency collectors. They do almost all garbage collection work concurrently while the application is still running. STW pauses are guaranteed to be under 1 millisecond, even on massive Terabyte-sized heaps.
+
+## Python/Java implementation
+
+*(You cannot explicitly code the Garbage Collector, but you can interact with it and cause memory leaks if you aren't careful).*
+
+### Creating a Memory Leak in Java
+Even with GC, memory leaks exist if you accidentally keep a *reference* to an object you no longer need.
+```java
+import java.util.*;
+
+public class MemoryLeakExample {
+    // A static list lives forever (GC Root)
+    private static List<byte[]> cache = new ArrayList<>();
+
+    public static void main(String[] args) {
+        while (true) {
+            // We continuously create 1MB arrays and add them to the list.
+            // The GC sees that the 'cache' list still holds a reference to them.
+            // Therefore, the GC CANNOT delete them. 
+            // Eventually: java.lang.OutOfMemoryError: Java heap space
+            cache.add(new byte[1024 * 1024]); 
+        }
+    }
+}
+```
+
+## Pros
+- **Developer Velocity:** No more debugging segmentation faults or writing `free()` code.
+- **Security:** Prevents massive categories of memory vulnerabilities (like buffer overflows and use-after-free exploits) common in C/C++.
+
+## Cons
+- **Unpredictable Latency:** A "Stop-The-World" pause can happen at any time. If you are building High-Frequency Trading software where a 5-millisecond delay costs millions of dollars, Java's GC pauses are unacceptable (which is why C++ or Rust is used there).
+- **Memory Overhead:** The JVM requires significantly more raw RAM to operate the GC overhead than a tightly coded C program.
+
+## Interview questions
+
+### Beginner
+- **Q: Can you force the Garbage Collector to run?**
+  - **A:** You can call `System.gc()`, but it is only a *suggestion* to the JVM. The JVM is free to ignore it. You should never rely on it in production code.
+
+### Intermediate
+- **Q: What is a Memory Leak in Java, and how does it happen if Java has Garbage Collection?**
+  - **A:** A memory leak in Java occurs when objects are no longer needed by the business logic, but they are unintentionally still referenced by active GC Roots (like adding objects to a static `HashMap` and forgetting to remove them). Because the reference exists, the GC refuses to delete them.
+
+### Senior
+- **Q: Explain the difference between Minor GC and Major GC.**
+  - **A:** Minor GC cleans the Young Generation. It happens very frequently, is extremely fast, and reclaims short-lived objects. Major GC cleans the Old Generation. It happens rarely, is computationally expensive, and causes noticeable "Stop-The-World" pauses.
+
+## Common mistakes
+- **Using `finalize()`:** The `finalize()` method is a legacy feature intended to run code right before an object is garbage collected. It is wildly unpredictable, causes performance nightmares, and has been deprecated in modern Java.
+
+## Best practices
+- **Minimize Object Creation:** Avoid instantiating new objects inside tight, high-speed loops. Reuse objects where possible to reduce pressure on the Young Generation.
+- Tune your JVM flags. Selecting the right collector (e.g., `-XX:+UseG1GC`) and heap size (`-Xmx4G`) based on your application's load profile is a critical DevOps skill.
+
+## Summary
+Garbage Collection is one of the crowning achievements of the Java ecosystem. By dividing the heap into generations and utilizing advanced concurrent algorithms like G1 and ZGC, modern Java provides exceptional memory safety without sacrificing the low-latency performance required by massive enterprise systems.
+
+## Related topics
+- [Java Memory Model](../memory-models)
+- [Classes & Objects](../../oop-fundamentals/classes-objects)

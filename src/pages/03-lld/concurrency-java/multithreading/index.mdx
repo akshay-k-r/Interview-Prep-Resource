@@ -1,0 +1,141 @@
+# Multithreading in Java
+
+## Introduction
+Multithreading is a core feature of Java that allows concurrent execution of two or more parts of a program. It maximizes CPU utilization by keeping the processor busy, especially during I/O blocking operations or heavy computational tasks.
+
+## Problem Statement
+Imagine a web server that handles user requests. If the server is single-threaded, it can only handle one user at a time. If User A requests a massive database query that takes 5 seconds, User B must wait 5 seconds just to load the homepage. The server's CPU is likely sitting idle 99% of the time waiting for the database to respond, yet User B is blocked.
+
+## Why this exists
+To allow a program to perform multiple tasks simultaneously. While Thread A is waiting for a database response, the CPU can switch to Thread B to serve a different user, vastly increasing the throughput and responsiveness of the application.
+
+## Real-world analogy
+Think of a restaurant kitchen.
+- **Single-threaded:** There is one chef. They chop the onions, put them in a pan, and wait 10 minutes for them to caramelize. They do nothing else for 10 minutes. Then they start chopping the tomatoes.
+- **Multithreaded:** There is one chef (the CPU core), but they use multiple threads of execution. While the onions are caramelizing (waiting/blocked), the chef turns around and starts chopping the tomatoes. They are doing multiple tasks concurrently.
+
+## Definition
+- **Process:** An executing instance of a program. It has its own dedicated memory space.
+- **Thread:** The smallest sequence of programmed instructions that can be managed independently by a scheduler. Threads exist *within* a process and share the process's memory (heap), but have their own execution stack.
+
+## Key concepts
+
+### 1. The `Thread` Class vs `Runnable` Interface
+There are two primary ways to create a thread in Java:
+1. Extending the `Thread` class.
+2. Implementing the `Runnable` interface. (This is highly preferred because Java only allows single inheritance; implementing `Runnable` leaves your class free to extend another class).
+
+### 2. Thread Lifecycle
+A thread goes through several states:
+- **NEW:** Created but not yet started.
+- **RUNNABLE:** Executing in the JVM (or waiting for the OS CPU scheduler).
+- **BLOCKED:** Waiting to acquire a monitor lock.
+- **WAITING:** Waiting indefinitely for another thread to perform an action.
+- **TIMED_WAITING:** Waiting for a specified amount of time (e.g., `Thread.sleep()`).
+- **TERMINATED:** Finished execution.
+
+## Python/Java implementation
+
+### 1. Creating a Thread (The bad way - extending Thread)
+```java
+class MyThread extends Thread {
+    @Override
+    public void run() {
+        System.out.println("Thread running: " + Thread.currentThread().getName());
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        MyThread t1 = new MyThread();
+        t1.start(); // NEVER call t1.run() directly! 
+                    // start() asks the OS to spawn a new thread.
+    }
+}
+```
+
+### 2. Creating a Thread (The good way - implementing Runnable)
+```java
+class MyRunnable implements Runnable {
+    @Override
+    public void run() {
+        for (int i = 0; i < 5; i++) {
+            System.out.println("Processing " + i + " on " + Thread.currentThread().getName());
+            try {
+                Thread.sleep(500); // Pause for 500ms
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        // Pass the Runnable task to a new Thread worker
+        Thread worker1 = new Thread(new MyRunnable(), "Worker-1");
+        Thread worker2 = new Thread(new MyRunnable(), "Worker-2");
+
+        worker1.start();
+        worker2.start();
+        
+        System.out.println("Main thread is not blocked!");
+    }
+}
+```
+
+### 3. Java 8+ Lambda approach
+```java
+public class Main {
+    public static void main(String[] args) {
+        // Because Runnable is a Functional Interface, we can use lambdas
+        Thread t = new Thread(() -> {
+            System.out.println("Lambda thread running!");
+        });
+        t.start();
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Web Servers (Tomcat):** When you deploy a Spring Boot application, Tomcat automatically manages a pool of threads. Every incoming HTTP request is assigned to a different thread, allowing 200 users to hit your API simultaneously.
+2. **Background Syncing:** A desktop app (like Google Drive) has a main thread handling the UI, and a background thread constantly uploading files to the cloud. If the upload thread didn't exist, the UI would freeze every time a file was saving.
+3. **Game Loops:** A video game uses one thread to render the graphics at 60 FPS, while another thread calculates physics, and a third thread listens to network events from other players.
+
+## Pros
+- **Responsiveness:** Prevents UI freezing or server blocking.
+- **Resource Utilization:** Keeps the CPU busy during I/O waits.
+- **Simplified Modeling:** Some problems are naturally parallel (like handling multiple independent users).
+
+## Cons
+- **Complexity:** Multithreading introduces extremely difficult bugs like Race Conditions and Deadlocks.
+- **Context Switching Overhead:** Spawning 10,000 threads on a 4-core machine will actually slow the system down. The CPU spends all its time switching between threads instead of actually executing code.
+
+## Interview questions
+
+### Beginner
+- **Q: Why shouldn't you call the `run()` method directly?**
+  - **A:** Calling `run()` directly simply executes the code sequentially on the current thread (usually the `main` thread). It does not spawn a new parallel thread. You must call `start()`, which tells the JVM to interact with the OS to spawn a real OS thread, which will then internally call your `run()` method.
+
+### Intermediate
+- **Q: What is a Daemon Thread?**
+  - **A:** A daemon thread is a low-priority background thread (like the Garbage Collector). The JVM will automatically exit when all *User* threads have finished, completely ignoring whether Daemon threads are still running or not.
+
+### Senior
+- **Q: What is the difference between Concurrency and Parallelism?**
+  - **A:** **Concurrency** is about *dealing* with multiple tasks at once (interleaving execution on a single core via fast context switching). **Parallelism** is about *doing* multiple tasks at literally the exact same time (running on two physically separate CPU cores).
+
+## Common mistakes
+- **Ignoring Thread Safety:** If two threads modify the same `ArrayList` at the same time, the array will become corrupted. You must use Synchronization or Concurrent Data Structures.
+- **Spawning threads manually:** While extending `Thread` is how you learn the basics, manually spawning raw threads using `new Thread().start()` in production enterprise code is considered a massive anti-pattern. You should always use **Thread Pools / Executors**.
+
+## Best practices
+- Never write `new Thread().start()` in production code. Use `ExecutorService`.
+- Keep the scope of shared variables as small as possible to avoid race conditions.
+
+## Summary
+Multithreading is the engine that drives modern, responsive, high-throughput applications. While it unlocks immense CPU power and handles asynchronous tasks beautifully, it also introduces a massive layer of complexity regarding shared state and synchronization that developers must master.
+
+## Related topics
+- [Concurrency & Synchronization](../concurrency-synchronization)
+- [Executors & Thread Pools](../executors-thread-pools)

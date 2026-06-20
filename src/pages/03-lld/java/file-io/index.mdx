@@ -1,0 +1,137 @@
+# File I/O (Input/Output)
+
+## Introduction
+File I/O (Input/Output) refers to the process of reading data from and writing data to files on a physical storage device. In Java, this is historically handled by the `java.io` package, and more recently modernized by the `java.nio` (New I/O) package.
+
+## Problem Statement
+Applications cannot rely solely on RAM. When an application closes, RAM is wiped. To persist data (like user preferences, logs, or databases), the program must interact with the operating system's file system to store bytes on a hard drive. Reading/writing from a hard drive is astronomically slower than reading from RAM, meaning inefficient I/O operations can bring an application's performance to a crawl.
+
+## Why this exists
+To provide standard, platform-independent APIs to interact with files. Whether the Java code is running on Windows, Linux, or macOS, the I/O streams abstract away the underlying OS file system complexities.
+
+## Real-world analogy
+Think of a warehouse (the Hard Drive) and a factory floor (the RAM). 
+- **Unbuffered I/O:** Sending a worker to the warehouse to fetch a single screw, bringing it back, assembling a part, and then running back to the warehouse for the next screw. Extremely slow.
+- **Buffered I/O:** Giving the worker a large bucket. They go to the warehouse, fill the bucket with 1,000 screws, and bring them back to the factory. Much faster.
+
+## Definition
+- **Streams:** A sequence of data. 
+  - An *Input Stream* reads data from a source (file, network).
+  - An *Output Stream* writes data to a destination.
+- **Byte Streams:** Process data byte by byte (8-bit). Used for binary data (Images, Audio, PDFs).
+- **Character Streams:** Process data character by character (16-bit Unicode). Used for human-readable text files.
+
+## Key concepts & Classes
+
+### 1. The Legacy `java.io` Package
+- **Byte Streams:** `FileInputStream` / `FileOutputStream`.
+- **Character Streams:** `FileReader` / `FileWriter`.
+- **Buffers:** `BufferedReader` / `BufferedWriter`. Wraps around the raw streams to drastically improve performance by reading/writing large chunks of data at once instead of hitting the disk for every single character.
+
+### 2. The Modern `java.nio.file` Package (NIO.2)
+Introduced in Java 7, this is the modern, preferred way to handle file operations.
+- **`Path`:** Represents a file path in the OS (replaces the old `File` class).
+- **`Files`:** A utility class containing static methods that do all the heavy lifting (copying, moving, reading all lines).
+
+## Python/Java implementation
+
+### 1. Legacy Way (BufferedReader / BufferedWriter)
+Good to know for maintaining older codebases.
+```java
+import java.io.*;
+
+public class LegacyIO {
+    public static void main(String[] args) {
+        String path = "example.txt";
+        
+        // WRITING TO A FILE
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
+            writer.write("Hello, World!");
+            writer.newLine();
+            writer.write("Writing to files is fun.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
+        // READING FROM A FILE
+        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("Read: " + line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### 2. Modern Way (Java NIO `Files` class)
+This is the standard, clean way to do I/O in modern Java.
+```java
+import java.nio.file.*;
+import java.util.List;
+import java.io.IOException;
+
+public class ModernIO {
+    public static void main(String[] args) {
+        Path path = Paths.get("modern_example.txt");
+        
+        try {
+            // Write a simple string (Overwrites by default)
+            Files.writeString(path, "Hello from NIO!\nLine 2");
+            
+            // Read the entire file into memory as a single String
+            String content = Files.readString(path);
+            System.out.println("File Content:\n" + content);
+            
+            // Read all lines into a List
+            List<String> lines = Files.readAllLines(path);
+            System.out.println("Line count: " + lines.size());
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Logging:** High-performance enterprise applications use buffered output streams to write millions of log entries to `application.log` files without blocking the main application thread.
+2. **Data Ingestion:** Reading a massive 5GB CSV file. You cannot use `Files.readAllLines()` because it will load the entire 5GB into RAM, crashing the app (`OutOfMemoryError`). Instead, you use a `BufferedReader` or `Files.lines(path)` (which returns a lazy Java 8 Stream) to process it one line at a time.
+3. **Serialization:** Converting an entire Java Object (like a `User` with a customized profile) into a byte stream (`ObjectOutputStream`) and saving it to disk, so it can be rehydrated later exactly as it was.
+
+## Pros
+- **NIO is Highly Optimized:** The modern `Files` and `Path` classes interact very efficiently with the host OS, offering vastly superior performance and error handling than the legacy `File` class.
+
+## Cons
+- **Blocking Operations:** Standard I/O operations block the thread. If you tell Java to read a 10GB file, that thread completely freezes until the disk finishes spinning. (Advanced NIO uses Asynchronous channels to solve this).
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between a Byte Stream and a Character Stream?**
+  - **A:** Byte Streams (`InputStream`) read raw binary data (1s and 0s) and are used for images or compiled files. Character Streams (`Reader`) read text data and automatically handle character encoding (like UTF-8).
+
+### Intermediate
+- **Q: Why should you always use a `BufferedReader` instead of a raw `FileReader`?**
+  - **A:** A raw `FileReader` hits the physical hard drive for every single character it reads. This is incredibly slow. A `BufferedReader` reads a large chunk (e.g., 8KB) into memory at once, and then hands you characters from memory, which is exponentially faster.
+
+### Senior
+- **Q: How would you process a 10 GB log file in a system with only 2 GB of RAM?**
+  - **A:** I would never load the entire file into memory. I would use the Java 8 Streams API via `Files.lines(path)`. This creates a lazy stream that reads the file line-by-line, processes it, and allows the Garbage Collector to destroy the old lines, keeping the memory footprint practically at zero regardless of file size.
+
+## Common mistakes
+- **Resource Leaks:** Forgetting to close a file stream in legacy Java. If you don't close it, the OS keeps a "lock" on the file, and no other program can delete or modify it. *Fix: Always use Try-With-Resources.*
+- **Ignoring Encoding:** Writing text to a file without specifying `UTF-8`. If you run the code on a Windows machine it might use `Windows-1252` encoding, and when you open the file on a Mac, all special characters will look like `???`.
+
+## Best practices
+- Prefer `java.nio.file.Files` for simple file operations.
+- Always wrap streams in a `try-with-resources` block.
+
+## Summary
+File I/O is the bridge between temporary application logic and persistent storage. While legacy Java relied heavily on explicit Stream chaining, modern Java NIO provides elegant, highly optimized utility classes that make reading, writing, and parsing files safer and significantly more readable.
+
+## Related topics
+- [Exception Handling](../exception-handling)
+- [Streams & Functional Programming](../streams-functional)

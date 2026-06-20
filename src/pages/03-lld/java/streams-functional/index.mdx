@@ -1,0 +1,114 @@
+# Streams & Functional Programming
+
+## Introduction
+Introduced in Java 8, the Stream API and Functional Interfaces revolutionized how Java developers write code. They brought functional programming concepts to a strictly object-oriented language, allowing developers to process sequences of elements in a declarative, concise, and highly parallelizable way.
+
+## Problem Statement
+Before Java 8, processing a collection of data (e.g., finding all active users, sorting them by age, and getting their names) required writing verbose `for` loops, multiple `if` statements, and temporary lists. 
+This "Imperative" approach focuses on *how* to do the task (looping, creating iterators, tracking indexes). It is highly prone to off-by-one errors and is incredibly difficult to multi-thread safely.
+
+## Why this exists
+To allow developers to write "Declarative" code. You tell the compiler *what* you want to achieve (Filter this, Sort that, Map this), and the underlying Stream API figures out the optimal way to execute it, potentially running it across multiple CPU cores automatically.
+
+## Real-world analogy
+Imagine a water treatment plant.
+- **Imperative (Pre-Java 8):** A single worker takes a bucket of water, manually pours it through a filter, then boils it, then bottles it. Then they grab the next bucket.
+- **Declarative (Streams):** The water flows through a continuous pipeline. First, it hits the Filter station, then it flows directly into the Boiler station, then the Bottling station. The flow is seamless, and you can easily add parallel pipes.
+
+## Definition
+- **Stream:** A sequence of elements supporting sequential and parallel aggregate operations. (It is *not* a data structure; it does not store data).
+- **Lambda Expression:** A short block of code that takes in parameters and returns a value. An anonymous function.
+
+## Key concepts
+
+### 1. The Stream Pipeline
+A Stream pipeline consists of three parts:
+1. **Source:** Where the data comes from (e.g., `list.stream()`).
+2. **Intermediate Operations:** Operations that transform the stream and return a *new* stream (e.g., `filter`, `map`, `sorted`). These are **lazy**; they don't execute until a terminal operation is called.
+3. **Terminal Operation:** An operation that produces a non-stream result (e.g., `collect`, `forEach`, `count`). This triggers the actual execution of the entire pipeline.
+
+### 2. Functional Interfaces
+An interface with exactly one abstract method. 
+- `Predicate<T>`: Takes an object, returns a `boolean` (Used for filtering).
+- `Function<T, R>`: Takes an object, returns a different object (Used for mapping).
+- `Consumer<T>`: Takes an object, returns nothing (Used for `forEach`).
+
+## Python/Java implementation
+
+### The Old Way (Imperative Java 7)
+```java
+List<User> users = getUsers();
+List<String> activeNames = new ArrayList<>();
+
+for (User user : users) {
+    if (user.isActive()) {               // 1. Filter
+        if (user.getAge() > 18) {        // 2. Filter
+            activeNames.add(user.getName()); // 3. Map to String
+        }
+    }
+}
+Collections.sort(activeNames);           // 4. Sort
+```
+
+### The New Way (Declarative Java 8 Streams)
+```java
+List<User> users = getUsers();
+
+List<String> activeNames = users.stream()                      // Source
+    .filter(user -> user.isActive())                           // Intermediate
+    .filter(user -> user.getAge() > 18)                        // Intermediate
+    .map(user -> user.getName())                               // Intermediate
+    .sorted()                                                  // Intermediate
+    .collect(Collectors.toList());                             // Terminal
+
+// Or using Method References (even cleaner):
+List<String> cleanerNames = users.stream()
+    .filter(User::isActive)
+    .filter(u -> u.getAge() > 18)
+    .map(User::getName)
+    .sorted()
+    .toList(); // Java 16+
+```
+
+## Multiple real-world examples
+1. **Data Analytics:** Taking a massive list of `Transaction` objects, filtering out failed transactions, grouping them by `Currency`, and summing the total amounts (`.collect(Collectors.groupingBy(...))`).
+2. **Parallel Processing:** Processing 1 million images. By simply changing `list.stream()` to `list.parallelStream()`, Java automatically breaks the list into chunks and processes them on multiple CPU cores using the ForkJoin pool.
+3. **Optional Handling:** Functional programming brought `Optional<T>` to Java to avoid `NullPointerExceptions`. E.g., `userRepository.findById(1).map(User::getName).orElse("Unknown")`.
+
+## Pros
+- **Readability:** The code perfectly describes the business logic (Filter -> Map -> Sort) without the noise of loops and iterators.
+- **Less Boilerplate:** Drastically reduces the lines of code needed.
+- **Parallelization:** Making a pipeline parallel requires changing exactly one word (`parallelStream()`), whereas writing custom multithreaded loops is notoriously difficult.
+
+## Cons
+- **Debugging:** Because intermediate operations are lazy and lambdas are anonymous, stepping through a stream with a debugger is much harder than stepping through a standard `for` loop.
+- **Performance Overhead:** For very small lists or very simple operations, the overhead of creating Stream objects and Lambda memory allocations can actually be slightly *slower* than a raw `for` loop (though rarely noticeable in business applications).
+
+## Interview questions
+
+### Beginner
+- **Q: What is a Lambda Expression in Java?**
+  - **A:** It is a concise way to represent an anonymous function that can be passed around as a variable or passed into a method (like `filter()`).
+
+### Intermediate
+- **Q: What does it mean that Stream intermediate operations are "Lazy"?**
+  - **A:** It means that calling `.filter()` or `.map()` does absolutely nothing immediately. The operations are simply stacked up in a recipe. The data only begins to flow through the pipeline when a Terminal Operation (like `.collect()` or `.count()`) is invoked.
+
+### Senior
+- **Q: Should you always use `parallelStream()` to make things faster?**
+  - **A:** Absolutely not. `parallelStream()` has immense overhead (splitting the data, thread context switching, merging results). If the list is small, or the operation is fast (like simple math), parallel streams are *slower*. Furthermore, if the operations modify shared state outside the stream, parallel streams will cause massive concurrency bugs.
+
+## Common mistakes
+- **Reusing a Stream:** A Stream can only be operated on once. If you call `.count()` on a stream, and then try to call `.collect()` on that same stream object on the next line, Java will throw an `IllegalStateException`.
+- **Modifying external state:** A lambda inside a stream should be *pure*. If your `.map()` operation changes the value of a variable outside the stream, you are introducing side effects that break functional programming paradigms and will destroy parallel execution.
+
+## Best practices
+- Prefer Method References (`User::getName`) over Lambdas (`user -> user.getName()`) when possible, as they are cleaner.
+- Use `Optional` to handle potential null returns elegantly instead of `if (obj != null)`.
+
+## Summary
+The Stream API modernized Java. By shifting the focus from *how* to iterate over data to *what* to do with the data, functional programming in Java allows developers to write highly expressive, robust, and easily parallelizable data processing pipelines.
+
+## Related topics
+- [Java Collections](../collections)
+- [Multithreading](../../concurrency-in-java/multithreading)

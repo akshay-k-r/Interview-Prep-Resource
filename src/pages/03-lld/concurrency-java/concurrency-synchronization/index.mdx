@@ -1,0 +1,144 @@
+# Concurrency & Synchronization
+
+## Introduction
+While multithreading allows tasks to run concurrently, it introduces a massive problem: **Shared State**. When multiple threads attempt to read and write to the same variables simultaneously, data becomes corrupted. Synchronization is the mechanism that ensures only one thread can access a shared resource at a time.
+
+## Problem Statement
+Imagine a bank account with $100. 
+- Thread A (ATM) checks the balance ($100).
+- Thread B (Mobile App) checks the balance ($100).
+- Thread A subtracts $100 and saves the new balance ($0).
+- Thread B, which already checked the balance as $100, subtracts $100 and saves the new balance ($0).
+Both withdrawals succeeded, $200 was dispensed, but the balance only went down to $0. This is called a **Race Condition**.
+
+## Why this exists
+To protect critical sections of code. Synchronization enforces mutual exclusion, ensuring that when one thread enters a critical block of code, all other threads are locked out until the first thread finishes.
+
+## Real-world analogy
+Think of a public restroom with a single toilet (the shared resource).
+If there is no lock on the door (no synchronization), two people might try to use the toilet at the exact same time, resulting in a disaster (Race Condition).
+A lock on the door ensures that once Person A enters, they lock it. Person B must wait outside (Blocked state) until Person A unlocks the door and leaves.
+
+## Definition
+- **Race Condition:** A flaw that occurs when the timing or order of events affects the correctness of a piece of code.
+- **Critical Section:** A block of code that accesses a shared resource and must not be executed by more than one thread at a time.
+- **Mutex (Monitor Lock):** A locking mechanism attached to every object in Java.
+
+## Key concepts
+
+### 1. The `synchronized` keyword
+In Java, you can synchronize a whole method or a specific block of code.
+- `public synchronized void withdraw()`: Locks the current instance (`this`).
+- `synchronized(this) { ... }`: Locks a specific block.
+
+### 2. The `volatile` keyword
+Ensures that changes made to a variable by one thread are immediately visible to all other threads. It prevents threads from caching variables in their local CPU registers. It does *not* prevent race conditions on compound operations like `count++`.
+
+### 3. `wait()`, `notify()`, `notifyAll()`
+Methods used for Inter-Thread Communication. If a thread holds a lock but needs to wait for a condition (e.g., waiting for funds to arrive before withdrawing), it can call `wait()`. This releases the lock and puts the thread to sleep until another thread calls `notify()`.
+
+## Python/Java implementation
+
+### Bad Implementation (Race Condition)
+```java
+class BankAccount {
+    private int balance = 100;
+
+    public void withdraw(int amount) {
+        if (balance >= amount) {
+            try { Thread.sleep(100); } catch (Exception e) {} // Simulate DB latency
+            balance = balance - amount;
+            System.out.println("Withdrew " + amount + ". New Balance: " + balance);
+        } else {
+            System.out.println("Insufficient funds.");
+        }
+    }
+}
+// If 2 threads call withdraw(100) simultaneously, the balance becomes -100!
+```
+
+### Better Implementation (Synchronized)
+```java
+class BankAccount {
+    private int balance = 100;
+
+    // The 'synchronized' keyword ensures only ONE thread can enter this method at a time
+    // for a specific BankAccount instance.
+    public synchronized void withdraw(int amount) {
+        if (balance >= amount) {
+            try { Thread.sleep(100); } catch (Exception e) {} 
+            balance = balance - amount;
+            System.out.println("Withdrew " + amount + ". New Balance: " + balance);
+        } else {
+            System.out.println("Insufficient funds.");
+        }
+    }
+}
+```
+
+### Advanced: `java.util.concurrent.locks.ReentrantLock`
+Modern Java provides explicit lock classes that offer more control than the `synchronized` keyword (e.g., trying to get a lock without blocking indefinitely).
+```java
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+class ModernBankAccount {
+    private int balance = 100;
+    private Lock lock = new ReentrantLock();
+
+    public void withdraw(int amount) {
+        lock.lock(); // Explicitly acquire the lock
+        try {
+            if (balance >= amount) {
+                balance -= amount;
+            }
+        } finally {
+            lock.unlock(); // ALWAYS unlock in a finally block!
+        }
+    }
+}
+```
+
+## Multiple real-world examples
+1. **Ticket Booking:** When two people click "Book Seat A12" at the exact same millisecond, the code that checks if the seat is available and marks it as booked MUST be synchronized to prevent double-booking.
+2. **Singleton Pattern:** The classic lazy-initialized Singleton pattern requires double-checked locking using `synchronized` to ensure two threads don't accidentally create two instances of the Singleton at startup.
+3. **Web Caches:** If 100 requests arrive simultaneously asking for a cached image that has expired, you don't want all 100 threads to query the database. You synchronize the DB call so only the first thread fetches it, while the other 99 wait for the cache to populate.
+
+## Pros
+- **Data Integrity:** Guarantees that shared variables are not corrupted.
+- **Predictability:** Ensures complex multi-step operations execute atomically (as a single, indivisible unit).
+
+## Cons
+- **Performance Bottlenecks:** Synchronization forces threads to wait in line. If overused, your highly parallel application essentially becomes single-threaded, destroying performance.
+- **Deadlocks:** If Thread A locks Resource 1 and waits for Resource 2, while Thread B locks Resource 2 and waits for Resource 1, both threads freeze forever.
+
+## Interview questions
+
+### Beginner
+- **Q: What is a Race Condition?**
+  - **A:** It is a bug where the output of a program changes unpredictably depending on the exact timing and order of thread execution, usually caused by multiple threads modifying a shared variable simultaneously.
+
+### Intermediate
+- **Q: Why is `count++` not thread-safe, even if `count` is marked as `volatile`?**
+  - **A:** `count++` is not a single atomic operation. It is actually three steps: Read the value, Add 1, Write the value back. `volatile` only guarantees that reads are fresh, but it doesn't prevent Thread B from reading the value *before* Thread A writes its updated value back. You must use `synchronized` or `AtomicInteger`.
+
+### Senior
+- **Q: What is Double-Checked Locking in the Singleton pattern?**
+  - **A:** It is an optimization to avoid the heavy performance cost of adding `synchronized` to the entire `getInstance()` method. You first check if the instance is null without locking. If it is null, you enter a `synchronized` block, and then check *again* if it is null (in case another thread built it while you were waiting for the lock), and then construct it. The instance variable must be marked `volatile` for this to work correctly in Java.
+
+## Common mistakes
+- **Locking on non-final objects:** 
+  `Object lock = new Object(); synchronized(lock) { lock = new Object(); }` 
+  If you change the lock object reference inside the block, the lock is broken and other threads will barge in.
+- **Forgetting to release locks:** If you use explicit `ReentrantLock` and an exception is thrown before you call `unlock()`, the lock is held forever, and the application freezes. Always use `try-finally`.
+
+## Best practices
+- Prefer the `java.util.concurrent` classes (like `ConcurrentHashMap` or `AtomicInteger`) instead of writing your own `synchronized` blocks. They are heavily optimized by JVM engineers using lock-free algorithms.
+- Lock as little code as possible. Don't synchronize an entire method if only 2 lines of it actually touch the shared variable.
+
+## Summary
+Synchronization is a necessary evil in multithreading. It provides the strict guardrails required to prevent data corruption via race conditions, but must be used surgically to avoid destroying the performance benefits that multithreading provides in the first place.
+
+## Related topics
+- [Multithreading](../multithreading)
+- [Executors & Thread Pools](../executors-thread-pools)

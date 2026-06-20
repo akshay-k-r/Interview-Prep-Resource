@@ -1,0 +1,90 @@
+# KISS (Keep It Simple, Stupid)
+
+## Introduction
+KISS is a design principle noted by the U.S. Navy in 1960. It states that most systems work best if they are kept simple rather than made complicated; therefore, simplicity should be a key goal in design, and unnecessary complexity should be avoided.
+
+## Problem Statement
+Engineers love engineering. When presented with a problem, developers often reach for the newest framework, a complex design pattern, or a massive distributed architecture to solve a problem that could be solved with a 10-line Python script. 
+Complex code takes longer to write, is harder for the next developer to read, introduces more vectors for bugs, and is immensely difficult to test and maintain.
+
+## Why this exists
+To remind developers that code is read far more often than it is written. The primary metric of good software design isn't how "clever" it is, but how easily a junior developer can understand it at 2:00 AM during an outage.
+
+## Real-world analogy
+Imagine designing a door handle.
+- A **KISS** door handle is a piece of curved metal. You pull it. It works perfectly for 100 years.
+- A **Complex** door handle requires an RFID badge, a Bluetooth smartphone app, an API call to a cloud server to verify identity, and a motorized latch. If the Wi-Fi goes down, you are trapped in the room.
+
+## Definition
+**"Simplicity should be a key goal in design, and unnecessary complexity should be avoided."**
+
+## Key concepts
+- **Clever Code:** Code that uses obscure language features, one-liners, or complex regex to accomplish something in 1 line that should take 5 lines. Clever code is the enemy of KISS.
+- **Accidental Complexity vs Essential Complexity:** 
+  - Essential complexity is the inherent difficulty of the problem (e.g., routing airplanes). 
+  - Accidental complexity is the difficulty introduced by the programmer's poor choices (e.g., using Kubernetes and 5 microservices to host a static blog).
+
+## Python/Java implementation
+
+### Bad Implementation (Violating KISS)
+```python
+# A developer trying to be "clever" and write a one-liner to check if 
+# all numbers in a list are even.
+def check_all_even(numbers):
+    return (lambda l: sum(1 for x in l if x % 2 == 0) == len(l))(numbers)
+```
+
+### Better Implementation (Following KISS)
+```python
+# Simple, readable, boring code.
+def check_all_even(numbers):
+    for num in numbers:
+        if num % 2 != 0:
+            return False
+    return True
+```
+
+## Multiple real-world examples
+1. **Architecture:** You need a database to store 10,000 customer records. 
+   - *Violating KISS:* Setting up a distributed, 5-node Cassandra cluster with replication.
+   - *Following KISS:* Using a standard PostgreSQL instance, or even SQLite if it's a desktop app.
+2. **Design Patterns:** Implementing an `AbstractFactoryAdapterSingleton` to format a date string, when a simple helper function `formatDate(date)` would suffice.
+3. **UI/UX:** A checkout page that forces the user to navigate through 6 different screens with complex animations, versus a simple one-page form.
+
+## Pros
+- **Maintainability:** Simple code is easy to fix and update.
+- **Onboarding:** New team members can read the codebase and contribute immediately.
+- **Reliability:** Fewer moving parts means fewer things can break. Simple systems fail less often.
+
+## Cons
+- **Boring:** Simple code can feel unchallenging to developers who want to use the latest cutting-edge tech stack.
+- **Misinterpretation:** "Simple" does not mean "Easy" or "Quick and Dirty." Designing a truly simple system requires deep thought and aggressive refactoring. As Steve Jobs said, "Simple can be harder than complex: You have to work hard to get your thinking clean to make it simple."
+
+## Interview questions
+
+### Beginner
+- **Q: What does KISS mean in software engineering?**
+  - **A:** Keep It Simple, Stupid. It means prioritizing readability and simplicity over cleverness and complexity.
+
+### Intermediate
+- **Q: How do KISS and DRY interact?**
+  - **A:** They often conflict! Sometimes, strictly adhering to DRY requires building massive, complex abstractions (violating KISS). Good engineering is finding the balance. Often, slightly duplicated (WET) code is better if the alternative is an unreadable, ultra-abstracted master function.
+
+### Senior
+- **Q: What is "Accidental Complexity"?**
+  - **A:** It is the complexity that developers introduce into a system (e.g., over-architecting, choosing the wrong tech stack) as opposed to the "Essential Complexity" inherent in the business problem itself.
+
+## Common mistakes
+- **Over-engineering:** Using a massive hammer (like Kafka) to swat a fly (like sending a daily email).
+- **Sacrificing Readability for Brevity:** Believing that 1 line of dense code is inherently better than 5 lines of readable code.
+
+## Best practices
+- Write "Boring Code." Code should read like a straightforward book.
+- Before adding a new library, framework, or microservice, aggressively ask: "Is there a simpler way to do this?"
+
+## Summary
+KISS is a reminder that the most valuable code isn't the most mathematically complex or the most heavily abstracted—it is the code that is easiest to understand, test, and maintain. 
+
+## Related topics
+- [YAGNI (You Aren't Gonna Need It)](../yagni)
+- [DRY (Don't Repeat Yourself)](../dry)

@@ -1,0 +1,146 @@
+# Encapsulation
+
+## Introduction
+Encapsulation is one of the four fundamental OOP concepts (along with Inheritance, Polymorphism, and Abstraction). It refers to the bundling of data (attributes) and methods that operate on that data into a single unit (a class), and crucially, restricting direct access to some of the object's components.
+
+## Problem Statement
+If all variables inside an object are public, any other part of the code can modify them directly. For example, if you have a `BankAccount` object, another class could simply do `account.balance = -10000;`. This circumvents all validation logic, leads to corrupted data, and creates a nightmare for debugging because you don't know *who* changed the variable or *when*.
+
+## Why this exists
+To protect an object's internal state from unintended or harmful modifications. By forcing other classes to use specific methods (getters and setters) to interact with the data, the object retains total control over how its data is modified.
+
+## Real-world analogy
+Consider a capsule of medicine. The medicine (the data) is hidden inside the gelatin shell. You swallow the capsule as a single unit, and the shell protects the medicine until it reaches your stomach. 
+
+Another analogy is driving a car. You interact with the steering wheel and pedals (the public methods). The complex engine mechanics, fuel injection, and transmission (the internal data) are hidden under the hood. You cannot (and should not) manually pump fuel into the engine with your hands while driving.
+
+## Definition
+The wrapping up of data and information under a single unit, and restricting access to the inner workings of that class.
+
+## Key concepts
+- **Access Modifiers:** Keywords used to set the visibility of classes, variables, and methods.
+  - `private`: Accessible only within the same class. (The core of encapsulation).
+  - `public`: Accessible from anywhere.
+  - `protected`: Accessible within the same package and subclasses.
+- **Getters (Accessors):** Public methods that return the value of a private field.
+- **Setters (Mutators):** Public methods that allow setting or modifying the value of a private field, usually with validation logic attached.
+
+## Python/Java implementation
+
+### Java Implementation
+```java
+class BankAccount {
+    // 1. Data is hidden (private)
+    private String accountNumber;
+    private double balance;
+
+    public BankAccount(String accountNumber, double initialBalance) {
+        this.accountNumber = accountNumber;
+        this.balance = initialBalance;
+    }
+
+    // 2. Public Getter
+    public double getBalance() {
+        return balance;
+    }
+
+    // 3. Public Setter with Validation Logic
+    public void deposit(double amount) {
+        if (amount > 0) {
+            balance += amount;
+            System.out.println("Deposited: " + amount);
+        } else {
+            System.out.println("Error: Deposit amount must be positive.");
+        }
+    }
+
+    // 4. Public Setter with Validation Logic
+    public void withdraw(double amount) {
+        if (amount > 0 && balance >= amount) {
+            balance -= amount;
+            System.out.println("Withdrew: " + amount);
+        } else {
+            System.out.println("Error: Insufficient funds or invalid amount.");
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        BankAccount myAccount = new BankAccount("123456", 1000);
+        
+        // myAccount.balance = 500000; // ERROR! balance has private access
+
+        myAccount.deposit(500);       // OK
+        myAccount.withdraw(2000);     // Error: Insufficient funds
+        System.out.println(myAccount.getBalance()); // 1500.0
+    }
+}
+```
+
+### Python Implementation
+*Note: Python doesn't have strict `private` keywords. It uses a convention of prefixing variables with an underscore `_` (protected) or double underscore `__` (private/name-mangled).*
+
+```python
+class BankAccount:
+    def __init__(self, account_number, initial_balance):
+        self.__account_number = account_number # Private variable
+        self.__balance = initial_balance       # Private variable
+
+    # Getter (using property decorator)
+    @property
+    def balance(self):
+        return self.__balance
+
+    # Setter
+    def deposit(self, amount):
+        if amount > 0:
+            self.__balance += amount
+        else:
+            print("Invalid deposit amount")
+
+account = BankAccount("123", 1000)
+# print(account.__balance) # AttributeError!
+print(account.balance)     # 1000 (Calls the @property method)
+account.deposit(50)
+```
+
+## Multiple real-world examples
+1. **User Authentication:** A `User` class stores the `passwordHash` as private. The only way to interact with it is via a `public boolean checkPassword(String plainText)` method. The outside world never sees the hash.
+2. **Game Health Systems:** A `Player` class has a private `health` integer. When damaged, you call `takeDamage(int amount)`. The method reduces health, and if health hits 0, it automatically triggers the `die()` animation. If `health` was public, another class could set it to 0 without triggering the death logic, breaking the game.
+
+## Pros
+- **Data Control:** You have absolute control over what data is stored in your fields (e.g., preventing negative ages).
+- **Flexibility:** You can change the internal implementation of a class without breaking the code of anyone who consumes your class. (e.g., you can change a `List` to a `Set` internally, but still return an Array from the getter).
+- **Read-Only / Write-Only:** By providing only a getter, you can make a field read-only. By providing only a setter, you can make it write-only.
+
+## Cons
+- **Boilerplate Code:** In older languages, encapsulation requires writing dozens of tedious `get()` and `set()` methods. (Modern tools like Lombok in Java, or Properties in Python/C# alleviate this).
+
+## Interview questions
+
+### Beginner
+- **Q: How do you achieve encapsulation in Java/C++?**
+  - **A:** By making the class variables `private` and providing `public` getter and setter methods to access and modify them.
+
+### Intermediate
+- **Q: What is the difference between Encapsulation and Abstraction?**
+  - **A:** Encapsulation is about **Information Hiding** (hiding the internal data and state of an object). Abstraction is about **Implementation Hiding** (hiding complex logic behind a simple interface). Encapsulation groups data and methods; Abstraction shows only the essential features.
+
+### Senior
+- **Q: Why shouldn't you just generate getters and setters for *every* private field by default?**
+  - **A:** Blindly generating getters and setters for everything defeats the purpose of encapsulation, effectively making the class public but with more syntax. You should only expose getters/setters for fields that *absolutely must* be accessed by the outside world. Otherwise, you violate the "Tell, Don't Ask" principle.
+
+## Common mistakes
+- **Returning mutable objects from Getters:** If your class has a `private List<String> items`, and your getter returns that list directly, the calling code can call `.add()` or `.clear()` on the list, modifying your private data. *Fix:* Always return a defensive copy (e.g., `return new ArrayList<>(items);` or `Collections.unmodifiableList(items)`).
+
+## Best practices
+- Keep all fields `private` by default.
+- Follow the **"Tell, Don't Ask" principle:** Instead of asking an object for its data and doing calculations outside, *tell* the object what you want it to do and let it do the calculations internally.
+
+## Summary
+Encapsulation acts as a protective shield around an object's data. By forcing external code to use strictly defined public methods (getters and setters), developers ensure that objects maintain a valid state, making large codebases predictable, secure, and easier to refactor.
+
+## Related topics
+- [Classes & Objects](../classes-objects)
+- [Abstraction](../abstraction)
