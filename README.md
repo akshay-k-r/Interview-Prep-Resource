@@ -13,7 +13,7 @@ A comprehensive, production-grade **Markdown-first** learning platform for Softw
 
 ## 🚀 Quick Start
 
-**Live Demo:** [Coming Soon – Deployed on Vercel](#)
+**Live :** [Deployed on Vercel](https://interview-prep-resource.vercel.app/)
 
 ### Deploy to Vercel (One Click)
 
