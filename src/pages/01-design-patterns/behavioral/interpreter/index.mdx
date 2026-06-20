@@ -1,0 +1,191 @@
+# Interpreter Pattern
+
+## Introduction
+The Interpreter is a behavioral design pattern that defines a grammatical representation for a language and provides an interpreter to deal with this grammar.
+
+## Problem Statement
+Imagine you are building an application that needs to evaluate mathematical expressions entered by the user as strings (e.g., `(5 + 3) * 2`). Or perhaps you are building a search tool that allows users to input complex boolean queries like `title:pattern AND (author:bob OR year:2020)`. Parsing and evaluating these complex, nested strings using regular expressions or manual string manipulation quickly becomes impossible to maintain.
+
+## Why this exists
+To provide an object-oriented way to evaluate sentences in a language. By mapping each grammar rule (or token) to a class, you can build an Abstract Syntax Tree (AST) that evaluates itself.
+
+## Real-world analogy
+Musicians reading sheet music.
+The sheet music is the "language". The musical notes and symbols (`C major`, `quarter rest`, `forte`) are the grammar rules. The musician's brain acts as the interpreter, reading the symbols one by one and translating them into physical actions (playing notes on an instrument).
+
+## Definition
+Given a language, define a representation for its grammar along with an interpreter that uses the representation to interpret sentences in the language.
+
+## Key concepts
+- **Abstract Expression:** Declares an `interpret(context)` method.
+- **Terminal Expression:** Implements `interpret` for literal/leaf symbols in the grammar (e.g., numbers in math).
+- **Non-Terminal Expression:** Implements `interpret` for rules/symbols containing other expressions (e.g., `+`, `-`, `AND`, `OR`). It typically calls `interpret` on its children.
+- **Context:** Contains global information/state accessible to the interpreter.
+- **Client:** Builds the Abstract Syntax Tree (AST) of Expressions and invokes the `interpret` method.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+classDiagram
+    class Context {
+        -data
+    }
+    
+    class AbstractExpression {
+        <<interface>>
+        +interpret(Context)
+    }
+    
+    class TerminalExpression {
+        +interpret(Context)
+    }
+    
+    class NonTerminalExpression {
+        -left: AbstractExpression
+        -right: AbstractExpression
+        +interpret(Context)
+    }
+
+    AbstractExpression <|.. TerminalExpression
+    AbstractExpression <|.. NonTerminalExpression
+    NonTerminalExpression o-- AbstractExpression : contains
+    Client --> Context
+    Client --> AbstractExpression
+```
+
+## Python/Java implementation
+
+### Java Implementation (Boolean Evaluator)
+```java
+// 1. Context (Optional, holds variables)
+class Context {
+    // Defines global state if needed
+}
+
+// 2. Abstract Expression
+interface Expression {
+    boolean interpret(String context);
+}
+
+// 3. Terminal Expression (Leaf node)
+class TerminalExpression implements Expression {
+    private String data;
+
+    public TerminalExpression(String data) {
+        this.data = data;
+    }
+
+    @Override
+    public boolean interpret(String context) {
+        // Does the context contain the word?
+        return context.contains(data);
+    }
+}
+
+// 4. Non-Terminal Expression (Composite node)
+class OrExpression implements Expression {
+    private Expression expr1;
+    private Expression expr2;
+
+    public OrExpression(Expression expr1, Expression expr2) {
+        this.expr1 = expr1;
+        this.expr2 = expr2;
+    }
+
+    @Override
+    public boolean interpret(String context) {
+        return expr1.interpret(context) || expr2.interpret(context);
+    }
+}
+
+class AndExpression implements Expression {
+    private Expression expr1;
+    private Expression expr2;
+
+    public AndExpression(Expression expr1, Expression expr2) {
+        this.expr1 = expr1;
+        this.expr2 = expr2;
+    }
+
+    @Override
+    public boolean interpret(String context) {
+        return expr1.interpret(context) && expr2.interpret(context);
+    }
+}
+
+// 5. Usage
+public class Main {
+    public static void main(String[] args) {
+        // Building the AST for: "Robert AND (John OR Robert)"
+        Expression robert = new TerminalExpression("Robert");
+        Expression john = new TerminalExpression("John");
+        
+        Expression johnOrRobert = new OrExpression(john, robert);
+        Expression isMale = new AndExpression(robert, johnOrRobert);
+
+        // Evaluate
+        System.out.println("Does context match? " + isMale.interpret("John is here"));   // False
+        System.out.println("Does context match? " + isMale.interpret("Robert is here")); // True
+    }
+}
+```
+
+## Step-by-step explanation
+1. Define the grammar of your language.
+2. Create an `Expression` interface with an `interpret()` method.
+3. Create `TerminalExpression` classes for the basic elements (numbers, variables, simple strings).
+4. Create `NonTerminalExpression` classes for operations (add, subtract, AND, OR). These hold references to child expressions.
+5. Provide a parser (not strictly part of the pattern) that reads a string and builds the tree of Expressions.
+6. Call `interpret()` on the root node of the tree.
+
+## Multiple real-world examples
+1. **Regular Expressions:** Evaluating regex patterns like `^[a-z]+$`.
+2. **SQL Parsers:** Translating SQL strings into executable database plans.
+3. **Template Engines:** Interpreting double curly braces `{{ variable }}` in HTML templates (like Jinja or Handlebars).
+4. **Calculators:** Parsing and evaluating mathematical strings.
+
+## Pros
+- **Easy to extend:** Adding a new rule to the grammar is as simple as adding a new class.
+- **Easy to implement:** The classes map directly to the grammar rules, making implementation straightforward.
+
+## Cons
+- **Performance:** Building and traversing an AST for every sentence is slow. Not suitable for performance-critical systems.
+- **Class Explosion:** Complex grammars require hundreds of classes (one for every rule).
+- **Does not handle parsing:** The pattern assumes you already have the AST. Building the tree from a raw string (Lexing/Parsing) requires additional complex tools.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the Interpreter pattern used for?**
+  - **A:** It is used to define a grammatical representation for a language and an interpreter to evaluate sentences in that language.
+
+### Intermediate
+- **Q: What is the difference between Terminal and Non-Terminal expressions?**
+  - **A:** Terminal expressions are the "leaves" of the tree; they do not contain other expressions (e.g., a number). Non-Terminal expressions represent rules and contain child expressions (e.g., an addition operator contains a left and right expression).
+
+### Senior
+- **Q: How does the Interpreter pattern relate to the Composite pattern?**
+  - **A:** The Interpreter pattern uses the Composite pattern internally to build the Abstract Syntax Tree. Terminal expressions act as the Leaves, and Non-Terminal expressions act as the Composites.
+
+## Common mistakes
+- Trying to parse complex, Turing-complete programming languages using this pattern. For complex languages, use dedicated parser generators (like ANTLR, YACC, or Bison).
+- Forgetting to separate the Parsing step from the Interpretation step. The pattern only covers interpretation.
+
+## Best practices
+- Use this pattern only for "Little Languages" — simple grammars with a small set of rules.
+- Implement the Flyweight pattern to share Terminal symbols if there are thousands of identical leaves (e.g., sharing the number `0`).
+
+## When NOT to use
+- For complex grammars (use a parser generator).
+- When execution speed is critical.
+
+## Comparison with similar concepts
+- **Interpreter vs Composite:** Interpreter utilizes Composite to structure the grammar rules into a tree.
+- **Interpreter vs Visitor:** Once the AST is built (Interpreter), you can use the Visitor pattern to define new operations (like pretty-printing or type-checking) over the AST without changing the expression classes.
+
+## Summary
+The Interpreter pattern is a specialized tool for evaluating domain-specific languages (DSLs), mathematical formulas, or complex queries. By converting grammatical rules into a tree of objects, it provides an elegant, highly extensible way to evaluate custom syntax, provided the language remains relatively simple.
+
+## Related topics
+- [Composite Pattern](../../structural/composite)
+- [Visitor Pattern](../visitor)

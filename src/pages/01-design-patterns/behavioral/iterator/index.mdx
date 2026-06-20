@@ -1,0 +1,190 @@
+# Iterator Pattern
+
+## Introduction
+The Iterator is a behavioral design pattern that lets you traverse elements of a collection without exposing its underlying representation (list, stack, tree, etc.).
+
+## Problem Statement
+Collections can store their elements in various ways: arrays, linked lists, trees, or graphs. If you want to traverse these collections, you shouldn't have to know how they are structured internally. If you add tree traversal code to your core application, it becomes tightly coupled to the tree's implementation, making it hard to change the data structure later.
+
+## Why this exists
+To extract the traversal behavior of a collection into a separate object called an iterator, providing a standard interface for iterating over various data structures.
+
+## Real-world analogy
+Think of a sightseeing tour in Rome.
+- You can walk randomly (Graph traversal).
+- You can follow a specific path mapped out on your phone (List traversal).
+- You can hire a local guide (Iterator). The guide knows exactly how to navigate the city to show you all the attractions. You just say "Next sight, please" without needing to know the city's internal road network.
+
+## Definition
+Provide a way to access the elements of an aggregate object sequentially without exposing its underlying representation.
+
+## Key concepts
+- **Iterator Interface:** Declares operations required for traversing a collection (e.g., `getNext()`, `hasNext()`).
+- **Concrete Iterator:** Implements specific algorithms for traversing a collection.
+- **Iterable/Collection Interface:** Declares one or multiple methods for getting iterators compatible with the collection.
+- **Concrete Collection:** Returns an instance of a particular concrete iterator.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+classDiagram
+    class IterableCollection {
+        <<interface>>
+        +createIterator() Iterator
+    }
+    
+    class ConcreteCollection {
+        +createIterator() Iterator
+    }
+    
+    class Iterator {
+        <<interface>>
+        +hasNext() boolean
+        +getNext() Object
+    }
+    
+    class ConcreteIterator {
+        -collection ConcreteCollection
+        -iterationState int
+        +hasNext() boolean
+        +getNext() Object
+    }
+
+    IterableCollection <|.. ConcreteCollection
+    Iterator <|.. ConcreteIterator
+    ConcreteCollection ..> ConcreteIterator : creates
+    ConcreteIterator --> ConcreteCollection : traverses
+```
+
+## Python/Java implementation
+
+### Java Implementation
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// 1. Iterator Interface
+interface Iterator<T> {
+    boolean hasNext();
+    T getNext();
+}
+
+// 2. Collection Interface
+interface SocialNetwork {
+    Iterator<String> createFriendsIterator(String profileEmail);
+}
+
+// 3. Concrete Collection & Iterator
+class Facebook implements SocialNetwork {
+    private List<String> profiles = new ArrayList<>();
+
+    public Facebook() {
+        profiles.add("alice@example.com");
+        profiles.add("bob@example.com");
+        profiles.add("charlie@example.com");
+    }
+
+    public List<String> getProfiles() {
+        return profiles;
+    }
+
+    @Override
+    public Iterator<String> createFriendsIterator(String profileEmail) {
+        return new FacebookIterator(this, profileEmail);
+    }
+}
+
+class FacebookIterator implements Iterator<String> {
+    private Facebook facebook;
+    private String profileEmail;
+    private int currentPosition = 0;
+
+    public FacebookIterator(Facebook facebook, String profileEmail) {
+        this.facebook = facebook;
+        this.profileEmail = profileEmail;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return currentPosition < facebook.getProfiles().size();
+    }
+
+    @Override
+    public String getNext() {
+        if (!hasNext()) {
+            return null;
+        }
+        String friend = facebook.getProfiles().get(currentPosition);
+        currentPosition++;
+        return friend;
+    }
+}
+
+// 4. Usage
+public class Main {
+    public static void main(String[] args) {
+        Facebook fb = new Facebook();
+        Iterator<String> iterator = fb.createFriendsIterator("alice@example.com");
+
+        while (iterator.hasNext()) {
+            System.out.println("Friend: " + iterator.getNext());
+        }
+    }
+}
+```
+
+## Step-by-step explanation
+1. Define the Iterator interface with `hasNext()` and `getNext()` methods.
+2. Define the Collection interface with a method that returns an Iterator.
+3. Create Concrete Collections that hold data.
+4. Create Concrete Iterators that take a collection, maintain an internal cursor, and implement the iteration logic.
+
+## Multiple real-world examples
+1. **Java Collections Framework:** Every collection (`List`, `Set`) implements `Iterable`, allowing the use of enhanced for-loops.
+2. **Database Cursors:** Iterating over result sets row by row without loading the entire table into memory.
+3. **File System Traversals:** Iterating over files in a directory tree (e.g., Depth-First or Breadth-First).
+
+## Pros
+- **Single Responsibility Principle:** You can clean up the client code and the collections by extracting bulky traversal algorithms into separate classes.
+- **Open/Closed Principle:** You can implement new types of collections and iterators and pass them to existing code without breaking anything.
+- **Parallel Iteration:** You can iterate over the same collection in parallel because each iterator object contains its own iteration state.
+
+## Cons
+- Applying the pattern can be an overkill if your app only works with simple collections.
+- Using an iterator might be less efficient than going through elements of some specialized collections directly.
+
+## Interview questions
+
+### Beginner
+- **Q: What is the main benefit of the Iterator pattern?**
+  - **A:** It hides the internal structure of a collection, providing a uniform way to traverse different types of data structures.
+
+### Intermediate
+- **Q: How does Iterator support the Single Responsibility Principle?**
+  - **A:** It separates the responsibility of storing data (the Collection) from the responsibility of traversing that data (the Iterator).
+
+### Senior
+- **Q: How do you handle concurrent modifications to a collection while an iterator is traversing it?**
+  - **A:** This is a classic problem (e.g., `ConcurrentModificationException` in Java). Solutions include:
+    1. **Fail-fast iterators:** The collection maintains a `modCount`. The iterator checks this count and throws an exception if it changed.
+    2. **Fail-safe iterators:** The iterator works on a clone/snapshot of the collection (e.g., `CopyOnWriteArrayList`).
+
+## Common mistakes
+- Creating complex, custom iterators for simple lists when the language's built-in iterators suffice.
+- Modifying the underlying collection directly during iteration without using the iterator's own methods (like `iterator.remove()`), leading to crashes.
+
+## Best practices
+- Leverage language-level features (like `Iterable` in Java or generators in Python) rather than writing custom Iterator interfaces from scratch.
+
+## When NOT to use
+- If you only use simple arrays or lists and don't require complex, interchangeable traversal algorithms.
+
+## Comparison with similar concepts
+- **Iterator vs Visitor:** Iterator lets you traverse a structure and perform actions. Visitor lets you perform actions on the elements of a structure, but the structure itself usually dictates the traversal order.
+
+## Summary
+The Iterator pattern provides a standard way to loop through collections of varying complexity without exposing their internal representations. It is foundational to modern programming languages and standard libraries.
+
+## Related topics
+- [Composite Pattern](../../structural/composite)
+- [Visitor Pattern](../visitor)
