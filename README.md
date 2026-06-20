@@ -69,6 +69,8 @@ npm start
 ├── src/
 │   ├── pages/
 │   │   ├── index.mdx              # Home/Introduction page
+│   │   ├── about.mdx              # About page
+│   │   ├── contributing.mdx       # Contributing guidelines
 │   │   ├── _meta.js               # Root navigation order
 │   │   ├── 01-design-patterns/    # Gang of Four patterns (23 topics)
 │   │   ├── 02-hld/                # High-level design (32 topics)
