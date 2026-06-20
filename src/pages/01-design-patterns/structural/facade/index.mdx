@@ -138,7 +138,7 @@ public class Main {
   - **A:** 
     - **Facade:** Simplifies the interface of a complex subsystem for external clients. Unidirectional (Facade -> Subsystem).
     - **Adapter:** Translates an incompatible interface into a compatible one. Unidirectional (Client -> Adapter -> Adaptee).
-    - **Mediator:** Centralizes communication between components *within* a system. Bidirectional (Component <-> Mediator <-> Component).
+    - **Mediator:** Centralizes communication between components *within* a system. Bidirectional (Component &lt;-&gt; Mediator &lt;-&gt; Component).
 
 ## Common mistakes
 - Putting complex business logic *inside* the Facade. The Facade should only orchestrate and delegate calls to the subsystem, it shouldn't be making business decisions.
