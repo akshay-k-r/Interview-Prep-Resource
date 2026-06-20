@@ -64,6 +64,8 @@ npm start
 ├── next.config.mjs                # Next.js configuration
 ├── theme.config.jsx               # Nextra theme settings
 ├── postcss.config.mjs             # PostCSS for Tailwind CSS
+├── content-graph.mermaid          # Visualize content structure (Mermaid)
+├── context-graph.json             # Context graph JSON
 ├── src/
 │   ├── pages/
 │   │   ├── index.mdx              # Home/Introduction page

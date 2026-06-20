@@ -1,0 +1,143 @@
+flowchart TD
+    %% Main Root
+    root["📄 README.md"] 
+    
+    %% Core Files
+    index_root["📝 index.mdx"] 
+    meta_root["⚙️ _meta.js"] 
+    tracker["🔍 Tracker.tsx"] 
+    agents["📋 AGENTS.md"] 
+    agent_todo["✅ agent-todo.md"] 
+
+    %% Top Level Sections
+    design_patterns["01-design-patterns"] 
+    hld["02-hld"] 
+    lld["03-lld"] 
+    dsa["04-dsa-patterns"] 
+    concurrency["05-concurrency-and-os"] 
+    behavioral["06-behavioral-and-leadership"] 
+
+    %% Design Patterns Subsections
+    dp_creational["creational"] 
+    dp_structural["structural"] 
+    dp_behavioral["behavioral"] 
+
+    %% HLD Subsections
+    hld_fundamentals["fundamentals"] 
+    hld_distributed["distributed-systems"] 
+    hld_databases["databases"] 
+    hld_caching["caching"] 
+    hld_messaging["messaging"] 
+    hld_microservices["microservices"] 
+    hld_security["security"] 
+    hld_case_studies["case-studies"] 
+
+    %% LLD Subsections
+    lld_oop["oop-fundamentals"] 
+    lld_solid["solid-principles"] 
+    lld_design_principles["design-principles"] 
+    lld_java["java"] 
+    lld_concurrency_java["concurrency-java"] 
+    lld_machine_coding["machine-coding"] 
+    lld_uml["uml"] 
+
+    %% DSA Topics
+    dsa_arrays["arrays-strings"] 
+    dsa_linkedlists["linked-lists"] 
+    dsa_stacks["stacks-queues"] 
+    dsa_trees["trees-graphs"] 
+    dsa_dp["dynamic-programming"] 
+    dsa_sliding["sliding-window"] 
+    dsa_greedy["greedy-algorithms"] 
+    dsa_hash["hash-tables"] 
+    dsa_heaps["heaps-priority-queues"] 
+    dsa_backtracking["backtracking"] 
+    dsa_twopointers["two-pointers"] 
+    dsa_unionfind["union-find"] 
+
+    %% Concurrency Topics
+    concurrency_threads["processes-threads"] 
+    concurrency_sync["synchronization"] 
+    concurrency_deadlocks["deadlocks"] 
+    concurrency_scheduling["scheduling"] 
+    concurrency_memory["memory-models"] 
+    concurrency_coherence["cache-coherence"] 
+
+    %% Behavioral Topics
+    behavioral_communication["communication"] 
+    behavioral_leadership["team-leadership"] 
+    behavioral_decision["decision-making"] 
+    behavioral_stakeholder["stakeholder-management"] 
+    behavioral_career["career-growth"] 
+
+    %% Connections
+    root --> index_root
+    index_root --> meta_root
+    
+    meta_root --> design_patterns
+    meta_root --> hld
+    meta_root --> lld
+    meta_root --> dsa
+    meta_root --> concurrency
+    meta_root --> behavioral
+
+    agents --> root
+    agent_todo --> root
+    tracker --> root
+
+    design_patterns --> dp_creational
+    design_patterns --> dp_structural
+    design_patterns --> dp_behavioral
+
+    hld --> hld_fundamentals
+    hld --> hld_distributed
+    hld --> hld_databases
+    hld --> hld_caching
+    hld --> hld_messaging
+    hld --> hld_microservices
+    hld --> hld_security
+    hld --> hld_case_studies
+
+    lld --> lld_oop
+    lld --> lld_solid
+    lld --> lld_design_principles
+    lld --> lld_java
+    lld --> lld_concurrency_java
+    lld --> lld_machine_coding
+    lld --> lld_uml
+
+    dsa --> dsa_arrays
+    dsa --> dsa_linkedlists
+    dsa --> dsa_stacks
+    dsa --> dsa_trees
+    dsa --> dsa_dp
+    dsa --> dsa_sliding
+    dsa --> dsa_greedy
+    dsa --> dsa_hash
+    dsa --> dsa_heaps
+    dsa --> dsa_backtracking
+    dsa --> dsa_twopointers
+    dsa --> dsa_unionfind
+
+    concurrency --> concurrency_threads
+    concurrency --> concurrency_sync
+    concurrency --> concurrency_deadlocks
+    concurrency --> concurrency_scheduling
+    concurrency --> concurrency_memory
+    concurrency --> concurrency_coherence
+
+    behavioral --> behavioral_communication
+    behavioral --> behavioral_leadership
+    behavioral --> behavioral_decision
+    behavioral --> behavioral_stakeholder
+    behavioral --> behavioral_career
+
+    classDef rootClass fill:#1e3a8a,stroke:#60a5fa,color:#fff
+    classDef sectionClass fill:#166534,stroke:#4ade80,color:#fff
+    classDef subClass fill:#4338ca,stroke:#818cf8,color:#fff
+    classDef topicClass fill:#854d0e,stroke:#fbbf24,color:#fff
+
+    class root,index_root,meta_root,agents,agent_todo,tracker rootClass
+    class design_patterns,hld,lld,dsa,concurrency,behavioral sectionClass
+    class dp_creational,dp_structural,dp_behavioral,hld_fundamentals,hld_distributed,hld_databases,hld_caching,hld_messaging,hld_microservices,hld_security,hld_case_studies,lld_oop,lld_solid,lld_design_principles,lld_java,lld_concurrency_java,lld_machine_coding,lld_uml subClass
+    class dsa_arrays,dsa_linkedlists,dsa_stacks,dsa_trees,dsa_dp,dsa_sliding,dsa_greedy,dsa_hash,dsa_heaps,dsa_backtracking,dsa_twopointers,dsa_unionfind,concurrency_threads,concurrency_sync,concurrency_deadlocks,concurrency_scheduling,concurrency_memory,concurrency_coherence,behavioral_communication,behavioral_leadership,behavioral_decision,behavioral_stakeholder,behavioral_career topicClass
