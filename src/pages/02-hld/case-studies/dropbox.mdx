@@ -1,7 +1,7 @@
 # Dropbox (Cloud File Storage)
 
 ## Introduction
-*Note: The core architecture of Dropbox is nearly identical to [Google Drive](../google-drive). Both are file synchronization services that rely heavily on file chunking, metadata databases, and long-polling for real-time synchronization.*
+*Note: The core architecture of Dropbox is nearly identical to [Google Drive](./google-drive). Both are file synchronization services that rely heavily on file chunking, metadata databases, and long-polling for real-time synchronization.*
 
 This document highlights the unique engineering choices Dropbox made specifically regarding their physical storage infrastructure.
 
@@ -43,5 +43,5 @@ If asked to design Dropbox or Google Drive in an interview, focus heavily on:
 5. **Real-time Sync:** Using WebSockets or Long Polling to notify other clients when the metadata changes.
 
 ## Related topics
-- [Google Drive](../google-drive)
-- [Databases (SQL vs NoSQL)](../../databases/nosql)
+- [Google Drive](./google-drive)
+- [Databases (SQL vs NoSQL)](../databases/nosql)

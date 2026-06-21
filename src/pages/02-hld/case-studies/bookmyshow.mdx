@@ -90,6 +90,6 @@ For regular movies, database row-locking is fine. However, for a Taylor Swift co
 BookMyShow is an architecture dominated by the need for strict ACID consistency. While the catalog and search can be scaled horizontally using Elasticsearch and CDN caching, the core booking engine relies heavily on Relational Database row-level locking, geographic sharding, and Redis caching to prevent the catastrophic failure of double-booking seats.
 
 ## Related topics
-- [Amazon E-commerce](../amazon-ecommerce)
-- [Distributed Locking](../../distributed-systems/distributed-locking)
-- [SQL Databases](../../databases/sql)
+- [Amazon E-commerce](./amazon-ecommerce)
+- [Distributed Locking](../distributed-systems/distributed-locking)
+- [SQL Databases](../databases/sql)

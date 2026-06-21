@@ -1,7 +1,7 @@
 # Zoom (Video Conferencing)
 
 ## Introduction
-*Note: The audio/video routing architecture of Zoom is heavily related to [Discord](../discord). Both rely on SFUs (Selective Forwarding Units) to handle group calls.*
+*Note: The audio/video routing architecture of Zoom is heavily related to [Discord](./discord). Both rely on SFUs (Selective Forwarding Units) to handle group calls.*
 
 Zoom is an enterprise-grade video conferencing platform. During the 2020 pandemic, Zoom scaled from 10 million daily meeting participants to over 300 million in a matter of weeks, proving the extreme elasticity of its architecture.
 
@@ -66,5 +66,5 @@ Historically, Zoom decrypted the video streams at the MMR servers to perform the
 Zoom's unprecedented success comes from its obsessive focus on the Data Plane. By building a proprietary video protocol over UDP, utilizing adaptive bitrate SFUs, and maintaining a dedicated global network of Multimedia Routers, Zoom ensures enterprise-grade video quality regardless of the user's location or internet connection.
 
 ## Related topics
-- [Discord (Voice & SFUs)](../discord)
-- [WebSockets & UDP](../../fundamentals/websockets)
+- [Discord (Voice & SFUs)](./discord)
+- WebSockets & UDP

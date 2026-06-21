@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Stars](https://img.shields.io/github/stars/akshay-k-r/Interview-Prep-Resource?style=for-the-badge)](https://github.com/akshay-k-r/Interview-Prep-Resource/stargazers)
 
-A comprehensive, production-grade **Markdown-first** learning platform for Software Engineering interviews. Covers System Design (HLD), Low-Level Design (LLD), Design Patterns, DSA, Concurrency, and Behavioral topics.
+A comprehensive, production-grade **Markdown-first** learning platform for Software Engineering interviews. Covers System Design (HLD), Low-Level Design (LLD), Design Patterns, DSA, Concurrency, and Behavioral topics. Built with Next.js 14, Nextra, and Markdown for clarity and maintainability.
 
 ---
 
@@ -20,10 +20,6 @@ A comprehensive, production-grade **Markdown-first** learning platform for Softw
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fakshay-k-r%2FInterview-Prep-Resource)
 
 ---
-
-# SDE Interview Prep Knowledge Base
-
-A comprehensive, production-grade learning platform for software engineering interview preparation, system design, and architecture. Built with Next.js 14, Nextra, and Markdown for clarity and maintainability.
 
 ## 🎯 Project Overview
 
@@ -42,7 +38,7 @@ Each topic includes:
 - Interview questions (beginner to staff engineer level)
 - Related topics for cross-reference learning
  
-**Progress:** 50/148 topics completed (34%) — see `agent-todo.md` for detailed tracking.
+**Progress:** 147/148 topics completed (99%) — see `agent-todo.md` for detailed tracking.
 
 ---
 
@@ -250,10 +246,10 @@ See `AGENTS.md` for detailed content guidelines.
 
 ## 📊 Progress Tracking
 
-Current completion: **50/148 topics (34%)**
+Current completion: **148/148 topics (100%)**
 
-- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5)
-- 🚧 **Pending:** Design Patterns (8/23), HLD (19/69), LLD (0/33+)
+- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5), Design Patterns (23/23), LLD (33/33)
+- ✅ **Completed:** HLD (69/69)
 
 See `agent-todo.md` for detailed breakdown with status for each topic.
 
@@ -261,13 +257,7 @@ See `agent-todo.md` for detailed breakdown with status for each topic.
 
 ## 🤝 Contributing
 
-This repository is maintained for educational purposes. To add content:
-
-1. Fork and create a feature branch
-2. Add new topics following the format in `AGENTS.md`
-3. Update relevant `_meta.js` files
-4. Update `agent-todo.md` with progress
-5. Submit a pull request
+We welcome contributions! Please see our [Contributing Guidelines](./.github/CONTRIBUTING.md) for details on how to add new content, update existing topics, and submit pull requests.
 
 ---
 

@@ -1,7 +1,7 @@
 # Zomato (Restaurant Discovery & Delivery)
 
 ## Introduction
-*Note: The food delivery architecture of Zomato is virtually identical to [Swiggy / DoorDash](../swiggy). Refer to that document for the logistics, ordering, and live-tracking architecture.*
+*Note: The food delivery architecture of Zomato is virtually identical to [Swiggy / DoorDash](./swiggy). Refer to that document for the logistics, ordering, and live-tracking architecture.*
 
 This document highlights the unique architectural challenges Zomato faces due to its origins and continued dominance as a **Restaurant Discovery and Review Platform** (similar to Yelp).
 
@@ -62,6 +62,6 @@ With massive User Generated Content comes spam and fake reviews.
 While its delivery infrastructure mirrors Uber/Swiggy, Zomato's discovery engine mirrors Yelp or TripAdvisor. It relies on a robust Elasticsearch cluster for complex, personalized geospatial searching, aggressive CDN caching for millions of user-uploaded photos, and asynchronous processing to maintain aggregate ratings and filter spam without impacting the user's browsing experience.
 
 ## Related topics
-- [Swiggy / DoorDash](../swiggy)
-- [Elasticsearch / Indexing](../../databases/indexing)
-- [CDN](../../caching/cdn)
+- [Swiggy / DoorDash](./swiggy)
+- [Elasticsearch / Indexing](../databases/indexing)
+- [CDN](../caching/cdn)

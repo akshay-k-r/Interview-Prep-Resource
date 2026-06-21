@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@types/mdx": "^2.0.14",
+    "@vercel/analytics": "^2.0.1",
     "next": "^14.2.35",
     "nextra": "^3.3.1",
     "nextra-theme-docs": "^3.3.1",
