@@ -1,123 +1,236 @@
 # Inheritance
 
 ## Introduction
-Inheritance is a core pillar of Object-Oriented Programming (OOP) that allows a new class (the child/subclass) to inherit the properties and behaviors (fields and methods) of an existing class (the parent/superclass).
+Inheritance is a fundamental concept of Object-Oriented Programming (OOP) that allows a new class (subclass/child) to acquire the properties and behaviors (fields and methods) of an existing class (superclass/parent). It models hierarchical taxonomies and facilitates code reuse.
 
 ## Problem Statement
-Imagine building a game with different types of characters: `Warrior`, `Mage`, and `Archer`. All three have an `x` and `y` coordinate, a `health` pool, and a `move()` method. If you write three completely separate classes, you will duplicate the `move()` logic and the coordinate fields three times. If you decide to add a `jump()` feature later, you have to write it three times in three different files.
+When modeling systems with related entities (e.g., different types of users: `Admin`, `Customer`, `SupportAgent`), writing separate classes from scratch leads to duplicating common fields (like `id`, `email`, `login()`) and behaviors. If the login mechanism changes, developers must update every class individually, increasing the risk of bugs and inconsistencies.
 
 ## Why this exists
-To promote code reusability and establish a hierarchical relationship between objects. Instead of duplicating code, a subclass can reuse code from its superclass and only write the code that makes it unique.
+To eliminate code redundancy and organize classes into logical hierarchies. It allows developers to define a general class with common attributes and specialize it in subclasses without modifying the base code.
 
 ## Real-world analogy
-Genetics is the perfect analogy. A child inherits characteristics from their parents (e.g., eye color, height). However, the child also has their own unique behaviors and characteristics (e.g., playing the guitar) that the parents do not possess.
+Consider **biology and genetics**. A child inherits genetic attributes (eye color, blood type) from their parents. However, the child can also express unique behaviors (e.g., playing a musical instrument) that the parent does not possess.
 
-Another analogy is biological taxonomy. 
-- **Animal** (Parent) has `eat()` and `sleep()`.
-- **Dog** (Child of Animal) inherits `eat()` and `sleep()`, but adds `bark()`.
-- **Cat** (Child of Animal) inherits `eat()` and `sleep()`, but adds `meow()`.
+Another analogy is a **product catalog**. A basic `Product` represents name and price. A `SmartPhone` IS-A `Product` but adds a screen size and camera specification. It inherits the base properties of a product while extending them.
 
 ## Definition
-A mechanism wherein a new class acquires the properties and methods of an existing class, establishing an "IS-A" relationship.
+Inheritance is a design mechanism that establishes an "IS-A" relationship between a superclass and a subclass, allowing the subclass to inherit, override, or extend the fields and methods of the superclass.
 
 ## Key concepts
-- **Superclass (Parent/Base Class):** The class whose features are inherited.
-- **Subclass (Child/Derived Class):** The class that inherits the other class. It can add its own fields and methods.
-- **"IS-A" Relationship:** Inheritance only makes sense if you can say "Subclass IS-A Superclass". (e.g., A Car IS-A Vehicle. An Apple IS-A Fruit).
-- **`super` keyword:** Used by the subclass to refer to the superclass (to call its constructor or its methods).
-- **Method Overriding:** A subclass can provide a specific implementation of a method that is already provided by its superclass.
+- **Superclass (Base/Parent):** The class whose properties are inherited.
+- **Subclass (Derived/Child):** The class that inherits from the superclass and can introduce additional fields or override existing methods.
+- **"IS-A" Relationship:** The logical validation that a subclass can substitute the superclass (e.g., A `Dog` IS-A `Animal`).
+- **Method Overriding:** Re-defining a superclass method in a subclass to provide specialized behavior.
+- **`super` Keyword:** A reference used to call the superclass's constructors or methods from within the subclass.
+- **Liskov Substitution Principle (LSP):** A design rule stating that objects of a superclass must be replaceable with objects of its subclasses without affecting program correctness.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+classDiagram
+    class User {
+        +String userId
+        +String email
+        +login()
+    }
+    class Admin {
+        +List~String~ permissions
+        +deleteUser()
+    }
+    class Customer {
+        +String shippingAddress
+        +placeOrder()
+    }
+    User <|-- Admin : Inherits (IS-A)
+    User <|-- Customer : Inherits (IS-A)
+```
 
 ## Python/Java implementation
 
-### Java Implementation
+### Bad implementation
+*Using inheritance solely for code reuse without a valid "IS-A" relationship. For example, making a `Square` inherit from `Rectangle` (violating LSP because setting width changes height in a square) or making `UserManager` extend `DatabaseHelper` just to access database helper methods.*
+
 ```java
-// 1. Superclass
-class Employee {
-    protected String name;
-    protected double baseSalary;
+package bad;
 
-    public Employee(String name, double baseSalary) {
-        this.name = name;
-        this.baseSalary = baseSalary;
-    }
+// Violation of Liskov Substitution Principle (LSP)
+class Rectangle {
+    protected int width;
+    protected int height;
 
-    public void displayInfo() {
-        System.out.println("Name: " + name + ", Salary: $" + calculatePay());
-    }
-
-    public double calculatePay() {
-        return baseSalary;
-    }
+    public void setWidth(int width) { this.width = width; }
+    public void setHeight(int height) { this.height = height; }
+    public int getArea() { return width * height; }
 }
 
-// 2. Subclass extending the Superclass
-class Manager extends Employee {
-    private double bonus;
-
-    public Manager(String name, double baseSalary, double bonus) {
-        // Call the superclass constructor
-        super(name, baseSalary);
-        this.bonus = bonus;
+class Square extends Rectangle {
+    @Override
+    public void setWidth(int width) {
+        this.width = width;
+        this.height = width; // Enforces square property but breaks Rectangle invariant!
     }
 
-    // Method Overriding (Changing the behavior of the parent)
     @Override
-    public double calculatePay() {
-        return baseSalary + bonus; // Calculates pay differently for managers
+    public void setHeight(int height) {
+        this.width = height;
+        this.height = height;
     }
 }
 
 public class Main {
-    public static void main(String[] args) {
-        Employee worker = new Employee("Alice", 50000);
-        Manager boss = new Manager("Bob", 80000, 20000);
-
-        worker.displayInfo(); // Output: Name: Alice, Salary: $50000.0
-        boss.displayInfo();   // Output: Name: Bob, Salary: $100000.0
+    public static void resize(Rectangle r) {
+        r.setWidth(5);
+        r.setHeight(10);
+        // If 'r' is a Square, this assertion fails, breaking client expectations!
+        assert r.getArea() == 50 : "Area must be 50";
     }
 }
 ```
 
+### Better implementation
+*Standard subclassing tree. It establishes a correct hierarchy, but remains tightly coupled to the superclass. If internal parent methods change their signatures or state-handling logic, child classes can break (the Fragile Base Class problem).*
+
+```java
+package better;
+
+class DatabaseHelper {
+    public void connect() { System.out.println("Connecting..."); }
+    public void query(String sql) { System.out.println("Executing: " + sql); }
+}
+
+// Inheriting database helper class to reuse code. Tight coupling created.
+class UserManager extends DatabaseHelper {
+    public void createNewUser(String username) {
+        connect(); // Inherited method
+        query("INSERT INTO users VALUES ('" + username + "')");
+    }
+}
+```
+
+### Best implementation
+*Applying "Composition over Inheritance" (HAS-A relationship) combined with interfaces. The `Square` and `Rectangle` implement a shared `Shape` contract, and `UserManager` uses composition to delegate database interactions, making the design flexible and decoupled.*
+
+```java
+package best;
+
+// 1. Decoupled Interface Contract
+interface Shape {
+    int getArea();
+}
+
+class Rectangle implements Shape {
+    private final int width;
+    private final int height;
+
+    public Rectangle(int width, int height) {
+        this.width = width;
+        this.height = height;
+    }
+
+    @Override
+    public int getArea() {
+        return width * height;
+    }
+}
+
+class Square implements Shape {
+    private final int side;
+
+    public Square(int side) {
+        this.side = side;
+    }
+
+    @Override
+    public int getArea() {
+        return side * side;
+    }
+}
+
+// 2. Composition (HAS-A) instead of Inheritance
+interface DatabaseConnector {
+    void executeQuery(String sql);
+}
+
+class PostgresConnector implements DatabaseConnector {
+    public void executeQuery(String sql) {
+        System.out.println("Executing Postgres Query: " + sql);
+    }
+}
+
+class UserManager {
+    private final DatabaseConnector dbConnector; // Composed dependency
+
+    public UserManager(DatabaseConnector dbConnector) {
+        this.dbConnector = dbConnector;
+    }
+
+    public void createNewUser(String username) {
+        dbConnector.executeQuery("INSERT INTO users VALUES ('" + username + "')");
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Define the Base Contract (Interface):** In `best`, the `Shape` interface defines the expected behavior (`getArea()`) without imposing structure.
+2. **Implement concrete shapes independently:** `Rectangle` and `Square` implement `Shape` using their own fields, maintaining encapsulation and preventing Liskov Substitution Principle violations.
+3. **Decouple database operations:** `UserManager` delegates database actions to a `DatabaseConnector` interface via composition. This allows swapping database implementations without modifying the `UserManager` class.
+
 ## Multiple real-world examples
-1. **UI Frameworks:** A base `UIComponent` class handles width, height, and rendering logic. `Button`, `TextBox`, and `Checkbox` inherit from it to reuse the rendering logic while adding specific behaviors (like click handlers).
-2. **E-commerce Products:** A base `Product` class handles ID, Price, and Name. `DigitalProduct` inherits it and adds a `downloadUrl`. `PhysicalProduct` inherits it and adds `shippingWeight`.
-3. **Exception Handling:** In Java, all custom exceptions you create must inherit from the base `Exception` or `RuntimeException` class to be thrown and caught by the JVM.
+- **UI Toolkits:** Base classes like `Component` define dimensions and focus listeners, which are inherited by concrete widgets like `Button` and `TextField`.
+- **E-commerce Systems:** A base `Product` class holds fields like `sku` and `price`, which are inherited by specialized subclasses like `DigitalBook` and `PhysicalBook`.
+- **Java Exception Handling:** Custom application exceptions inherit from `RuntimeException` to integrate with the JVM's exception-catching architecture.
 
 ## Pros
-- **Code Reusability:** Write common logic once in the parent class.
-- **Extensibility:** Easily add new features to all child classes by modifying the parent.
-- **Polymorphism Base:** Inheritance is the prerequisite for achieving runtime polymorphism.
+- **Polymorphic substitution:** Code can accept superclass instances and interact with subclasses uniformly.
+- **Code reuse:** Shared logic is declared once in the superclass, reducing code duplication.
+- **Structural organization:** Groups classes into clear hierarchies, simplifying domain modeling.
 
 ## Cons
-- **Tight Coupling:** The child class is tightly coupled to the parent class. If you change a method in the parent class, it can unintentionally break all child classes (The Fragile Base Class Problem).
-- **Rigid Hierarchies:** Real-world concepts rarely fit perfectly into rigid, single-inheritance tree structures.
+- **Brittle Base Classes:** Modifying a superclass can unintentionally break subclasses.
+- **Tightly coupled designs:** Inheritance hierarchies are defined at compile-time and cannot be changed dynamically at runtime.
+- **Single-Inheritance limits:** In languages like Java or C#, a class can extend only one superclass.
 
 ## Interview questions
 
 ### Beginner
-- **Q: Does Java support Multiple Inheritance?**
-  - **A:** Java does NOT support multiple inheritance of *classes* (a child cannot extend two parent classes) to prevent the "Diamond Problem" (ambiguity if both parents have a method with the same name). However, Java supports multiple inheritance of *Interfaces*.
+- **Q: Does Java support multiple inheritance of classes?**
+- **A:** No. Java does not support multiple inheritance of classes to avoid the "Diamond Problem" (ambiguities that arise when two parent classes define a method with the same name). However, Java supports multiple inheritance of interfaces.
 
 ### Intermediate
-- **Q: What is the difference between `super()` and `this()`?**
-  - **A:** `super()` is used to call the constructor of the parent class. `this()` is used to call another constructor within the same class. Both must be the very first statement inside a constructor.
+- **Q: What is the difference between Method Overloading and Method Overriding?**
+- **A:** Method Overloading occurs within the same class (or across subclasses) and involves creating methods with the same name but different signatures (compile-time polymorphism). Method Overriding occurs when a subclass redefines a superclass method with the exact same name, return type, and signature (runtime polymorphism).
 
 ### Senior
-- **Q: Explain the principle of "Composition over Inheritance".**
-  - **A:** Inheritance creates strict "IS-A" relationships that are hard to change later. Composition uses "HAS-A" relationships (where a class holds references to other objects to gain their behavior). Modern software design heavily favors Composition because it is far more flexible at runtime and avoids deeply nested, brittle inheritance trees.
+- **Q: How does the Liskov Substitution Principle (LSP) limit the use of inheritance?**
+- **A:** LSP states that subclasses must be substitutable for their superclass without altering program correctness. If a subclass overrides superclass methods and changes expected invariants (such as a `Square` altering the dimensions of a `Rectangle`), it violates LSP. In such cases, inheritance is inappropriate, and composition should be used instead.
+
+### Staff Engineer
+- **Q: Explain how the JVM handles method invocation for overridden methods under the hood (vtable lookup).**
+- **A:** When compiling code, the compiler determines method calls for static or private methods using `invokestatic` or `invokespecial` (static binding). For public/protected instance methods, it uses `invokevirtual` (dynamic binding). At runtime, the JVM looks up the object's class metadata and consults its **virtual method table (vtable)**. The vtable holds pointers to the actual bytecode of the methods. If a subclass overrides a method, the pointer in its vtable is updated to point to the subclass's implementation, directing the execution path.
 
 ## Common mistakes
-- **Using inheritance for code reuse without an "IS-A" relationship:** If you have a `MathUtils` class, and you make `Calculator` extend it just to use its methods, that is wrong. A Calculator IS NOT a MathUtils. It should *contain* (Composition) MathUtils instead.
-- **Deep Inheritance Trees:** Creating hierarchies like `Object -> Entity -> Animal -> Mammal -> Dog -> Poodle`. Deep hierarchies are incredibly hard to understand, debug, and refactor. Keep hierarchies shallow (1-2 levels max).
+- **Inheriting solely for code reuse:** Extending a class to reuse a helper method when there is no "IS-A" relationship.
+- **Deeply nested hierarchies:** Creating deep inheritance chains (e.g., `Object -> Entity -> Unit -> Character -> Monster -> Dragon`). These are hard to maintain and modify. Keep hierarchies shallow (1-2 levels).
 
 ## Best practices
-- Only use inheritance when the "IS-A" relationship holds true in all scenarios (Liskov Substitution Principle).
-- Prefer Composition over Inheritance unless there is a clear, undeniable hierarchical taxonomy.
+- Prefer Composition over Inheritance when reusing code.
+- Mark classes as `final` if they are not designed to be subclassed, protecting their encapsulation.
+- Annotate overridden methods with `@Override` to catch compilation errors early.
+
+## When NOT to use
+- **Varying runtime behaviors:** If an object's behavior needs to change dynamically at runtime, use the Strategy or State pattern instead of static inheritance.
+- **No true hierarchy:** Avoid inheritance if the subclass cannot logically substitute the parent class in all scenarios.
+
+## Comparison with similar concepts
+- **Inheritance vs Composition:**
+  - **Inheritance:** An "IS-A" relationship that is defined statically at compile-time.
+  - **Composition:** A "HAS-A" relationship that allows components to be swapped dynamically at runtime.
 
 ## Summary
-Inheritance is a powerful tool for reusing code and establishing hierarchies. While it allows for elegant designs like UI component trees, modern developers treat it with caution, often preferring Composition to avoid the brittle, tightly-coupled codebases that deep inheritance trees inevitably create.
+Inheritance defines "IS-A" hierarchies to reuse code and enable polymorphism. However, deep or incorrect hierarchies introduce tight coupling, so developers should favor composition to build flexible systems.
 
 ## Related topics
 - [Polymorphism](../polymorphism)
-- [Classes & Objects](../classes-objects)
 - [Composition vs Inheritance](../../design-principles/composition-vs-inheritance)
+- [SOLID Principles](../../solid-principles)

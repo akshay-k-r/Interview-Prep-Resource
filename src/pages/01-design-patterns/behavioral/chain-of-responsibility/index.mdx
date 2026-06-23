@@ -123,6 +123,66 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. Base Handler
+class Middleware(ABC):
+    def __init__(self) -> None:
+        self._next: Middleware | None = None
+
+    def link_with(self, next_handler: "Middleware") -> "Middleware":
+        self._next = next_handler
+        return next_handler
+
+    @abstractmethod
+    def check(self, email: str, password: str) -> bool:
+        if self._next is None:
+            return True  # Reached the end of the chain
+        return self._next.check(email, password)
+
+
+# 2. Concrete Handlers
+class ThrottlingMiddleware(Middleware):
+    def __init__(self, requests_per_minute: int):
+        super().__init__()
+        self._requests_per_minute = requests_per_minute
+        self._count = 0
+
+    def check(self, email: str, password: str) -> bool:
+        self._count += 1
+        if self._count > self._requests_per_minute:
+            print("Request limit exceeded!")
+            return False  # Break the chain
+        return super().check(email, password)
+
+
+class UserExistsMiddleware(Middleware):
+    def check(self, email: str, password: str) -> bool:
+        if email != "admin@example.com":
+            print("This email is not registered!")
+            return False  # Break the chain
+        return super().check(email, password)
+
+
+# 3. Client Usage
+if __name__ == "__main__":
+    # Compose the chain
+    middleware = ThrottlingMiddleware(requests_per_minute=2)
+    middleware.link_with(UserExistsMiddleware())
+
+    # Test the chain
+    print("Checking request 1...")
+    middleware.check("admin@example.com", "pass")  # Passes
+
+    print("Checking request 2...")
+    middleware.check("admin@example.com", "pass")  # Passes
+
+    print("Checking request 3...")
+    middleware.check("admin@example.com", "pass")  # Output: Request limit exceeded!
+```
+
 ## Step-by-step explanation
 1. Define a common interface for handlers, including a method to process the request and set the next handler.
 2. Implement concrete handlers. In each handler, decide whether to:
@@ -136,6 +196,8 @@ public class Main {
 1. **Web Middleware (Express.js / Spring Security):** Interceptor chains that perform logging, authentication, CORS checks, and parsing before hitting the controller.
 2. **UI Event Bubbling:** In DOM manipulation, if a button doesn't handle a click event, it "bubbles up" to the parent container, and so on up to the document root.
 3. **Logger Frameworks:** A logger might pass a message through a chain: ConsoleLogger -> FileLogger -> EmailErrorLogger.
+4. **Exception Handling:** Try-catch blocks in nested execution frames act as a chain of responsibility, where the runtime searches up the call stack until a matching catch block handles the exception.
+5. **Approval Workflows:** An expense report routing through manager → director → VP depending on the expense amount.
 
 ## Pros
 - **Single Responsibility Principle:** You can decouple classes that invoke operations from classes that perform operations.
@@ -151,14 +213,28 @@ public class Main {
 ### Beginner
 - **Q: How does a handler in the Chain of Responsibility decide what to do with a request?**
   - **A:** It typically checks if it can process it. If yes, it does so. If no (or if it's a middleware that just does a partial check), it calls the `handle()` method of the `next` handler.
+- **Q: What happens if a request reaches the end of the chain without being handled?**
+  - **A:** By default, it drops silently or returns a fallback value. It is best practice to have a final "catch-all" handler that raises an error or logs the unhandled request.
 
 ### Intermediate
 - **Q: What is the difference between Chain of Responsibility and Decorator?**
   - **A:** Decorator adds behavior to an object but doesn't usually interrupt the flow (the request always reaches the core object). Chain of Responsibility allows any handler to break the chain and stop the request from proceeding.
+- **Q: How does Chain of Responsibility differ from Command pattern?**
+  - **A:** Command encapsulates a request as an object, allowing you to parameterize or queue it. Chain of Responsibility passes a request along a sequence of processors until one of them handles it. They can be combined by packaging the request as a Command object and passing it through the chain.
 
 ### Senior
 - **Q: How does Java's Servlet Filter architecture relate to this pattern?**
   - **A:** Servlet Filters implement a two-way Chain of Responsibility. A request passes through the chain (`chain.doFilter()`) to reach the Servlet. On the way back, the response passes back through the same chain in reverse order, allowing filters to modify both incoming and outgoing data.
+- **Q: How do you design a Chain of Responsibility where handlers can execute asynchronously or return a Future/Promise?**
+  - **A:** Instead of returning a boolean or void, each handler's `handle()` method returns a `CompletableFuture` (in Java) or `Promise` (in JavaScript). The handler invokes the next handler, receives its future, maps/chains the result, and returns its own future back up the chain.
+
+### Staff Engineer
+- **Q: In a microservices architecture, how do you coordinate a distributed Chain of Responsibility (e.g., Auth Service → Gateway Check → Fraud Check)? What are the downsides over a centralized orchestrator?**
+  - **A:** A distributed chain passes requests sequentially via HTTP or gRPC between services. 
+    - *Downsides:* Latency accumulates with each hop, debugging across multiple network barriers is complex (requires distributed tracing), and failure handling/rollbacks are difficult.
+    - *Alternative:* A centralized API Gateway or orchestrator manages the steps, reducing network hops and centralizing failure handling.
+- **Q: How does Spring Security use the `FilterChainProxy` to implement security checks?**
+  - **A:** Spring Security uses a list of `SecurityFilterChain` objects managed by `FilterChainProxy`. When a request arrives, `FilterChainProxy` matches the request URL against the registered filter chains and delegates to the first matching chain's internal list of filters (e.g., OAuth authentication, CSRF, exception handling filters) sequentially using the Chain of Responsibility pattern.
 
 ## Common mistakes
 - Forgetting to call `super.handle(request)` (or `next.handle()`), inadvertently breaking the chain and blocking all subsequent logic.
@@ -181,3 +257,4 @@ The Chain of Responsibility is a powerful pattern for processing requests throug
 ## Related topics
 - [Decorator Pattern](../../structural/decorator)
 - [Observer Pattern](../observer)
+- [Command Pattern](../command)

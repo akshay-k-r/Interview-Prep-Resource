@@ -118,6 +118,60 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. Target Interface (What the client expects)
+class MediaPlayer(ABC):
+    @abstractmethod
+    def play(self, audio_type: str, file_name: str) -> None:
+        pass
+
+# 2. Adaptee (Incompatible 3rd-party class)
+class AdvancedMediaPlayer:
+    def play_vlc(self, file_name: str) -> None:
+        print(f"Playing vlc file: {file_name}")
+
+    def play_mp4(self, file_name: str) -> None:
+        print(f"Playing mp4 file: {file_name}")
+
+# 3. Adapter (Translates Target calls to Adaptee calls)
+class MediaAdapter(MediaPlayer):
+    def __init__(self):
+        self._advanced_player = AdvancedMediaPlayer()
+
+    def play(self, audio_type: str, file_name: str) -> None:
+        dispatch = {
+            "vlc": self._advanced_player.play_vlc,
+            "mp4": self._advanced_player.play_mp4,
+        }
+        handler = dispatch.get(audio_type.lower())
+        if handler:
+            handler(file_name)
+        else:
+            print(f"Unsupported format: {audio_type}")
+
+# 4. Client
+class AudioPlayer(MediaPlayer):
+    def __init__(self):
+        self._adapter = MediaAdapter()
+
+    def play(self, audio_type: str, file_name: str) -> None:
+        if audio_type.lower() == "mp3":
+            print(f"Playing mp3 file: {file_name}")
+        elif audio_type.lower() in ("vlc", "mp4"):
+            self._adapter.play(audio_type, file_name)
+        else:
+            print(f"Invalid format: {audio_type}")
+
+# Usage
+player = AudioPlayer()
+player.play("mp3", "song.mp3")       # Playing mp3 file: song.mp3
+player.play("mp4", "movie.mp4")      # Playing mp4 file: movie.mp4
+player.play("vlc", "lecture.vlc")    # Playing vlc file: lecture.vlc
+```
+
 ## Step-by-step explanation
 1. Identify a class (Adaptee) whose interface doesn't match what the client code expects (Target).
 2. Create an `Adapter` class that implements the `Target` interface.
@@ -128,6 +182,8 @@ public class Main {
 1. **Database Drivers:** JDBC (Java) acts as an adapter, translating standard Java SQL commands into the specific proprietary formats required by MySQL, Oracle, or PostgreSQL.
 2. **Third-Party Integrations:** Adapting a modern REST API application to communicate with a legacy SOAP XML web service.
 3. **UI Components:** Adapting a domain model object so it can be displayed in a generic UI Table component.
+4. **Payment Gateway Adapters:** Wrapping Stripe, PayPal, and Razorpay SDKs behind a unified `PaymentGateway` interface so your application code stays payment-provider-agnostic.
+5. **Logging Libraries:** SLF4J in Java acts as a Facade + Adapter. It provides a unified logging API while adapting to Logback, Log4j, or java.util.logging under the hood.
 
 ## Pros
 - **Single Responsibility Principle:** You can separate the interface or data conversion code from the primary business logic of the program.
@@ -142,13 +198,29 @@ public class Main {
 - **Q: What is the purpose of the Adapter pattern?**
   - **A:** It allows two objects with incompatible interfaces to work together by wrapping one object inside an adapter that translates the requests.
 
+- **Q: Give a simple real-world analogy for the Adapter pattern.**
+  - **A:** A power plug adapter that lets a US charger plug into a European wall socket. The adapter translates between two incompatible physical interfaces.
+
 ### Intermediate
 - **Q: What is the difference between an Object Adapter and a Class Adapter?**
   - **A:** An Object Adapter uses *composition* (it holds an instance of the Adaptee and delegates to it). A Class Adapter uses *multiple inheritance* (it inherits from both the Target and the Adaptee). Since Java does not support multiple inheritance, Object Adapters are far more common.
 
+- **Q: Can an Adapter work with multiple Adaptees simultaneously?**
+  - **A:** Yes. An Adapter can compose multiple Adaptees and route calls to the appropriate one based on the request type. This is sometimes called a "Multi-Adapter" or "Universal Adapter" — common in payment gateways that wrap Stripe, PayPal, and Razorpay.
+
 ### Senior
 - **Q: How does the Adapter pattern differ from the Facade pattern?**
   - **A:** An Adapter wraps an *existing* interface to make it compatible with another interface; it doesn't add new behavior, just translates. A Facade defines a *new*, simplified interface to a complex subsystem of many objects.
+
+- **Q: When would you prefer the Adapter pattern over refactoring the Adaptee's interface?**
+  - **A:** When you don't own the Adaptee's source code (3rd-party library), when the Adaptee is used by other clients who depend on its current interface, or when you need to adapt multiple incompatible Adaptees to a single Target interface.
+
+### Staff Engineer
+- **Q: How does the Adapter pattern relate to the Anti-Corruption Layer in Domain-Driven Design (DDD)?**
+  - **A:** The Anti-Corruption Layer (ACL) is essentially a set of Adapters at the boundary between two bounded contexts. It prevents the domain model of one context from being "corrupted" by the model of another. The ACL translates between external models (legacy systems, 3rd-party APIs) and your clean internal domain model, exactly like an Adapter translates between incompatible interfaces.
+
+- **Q: In a microservices migration, how do Adapters help with the Strangler Fig pattern?**
+  - **A:** When gradually replacing a monolith, Adapters sit between the new microservice and the old monolith's API. The Adapter translates the old API's format into the new service's expected format. As the migration progresses, you move more logic to the new service and eventually remove the Adapter. This allows incremental migration without a risky "big bang" rewrite.
 
 ## Common mistakes
 - **Adding logic:** The adapter should only translate/format data and forward the call. It should not contain complex business logic. If it does, you might be looking for a Decorator.
@@ -171,3 +243,5 @@ The Adapter pattern is a practical, structural patch that saves you from rewriti
 ## Related topics
 - [Facade Pattern](../facade)
 - [Decorator Pattern](../decorator)
+- [Strategy Pattern](../../behavioral/strategy)
+- [Open/Closed Principle](../../../03-lld/solid/open-closed-principle)

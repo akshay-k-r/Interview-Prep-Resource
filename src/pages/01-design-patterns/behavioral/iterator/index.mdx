@@ -133,8 +133,64 @@ public class Main {
 }
 ```
 
+### Python Implementation
+Python has a built-in iterator protocol. A class that defines `__iter__()` and returns an object defining `__next__()` is an iterator. Generators simplify this by using `yield`.
+
+```python
+from collections.abc import Iterable, Iterator
+
+# --- GoF Iterator Pattern using Python Protocols ---
+
+class FacebookIterator(Iterator[str]):
+    def __init__(self, profiles: list[str]) -> None:
+        self._profiles = profiles
+        self._current_position = 0
+
+    def __next__(self) -> str:
+        """Returns the next element. Raises StopIteration when done."""
+        if self._current_position >= len(self._profiles):
+            raise StopIteration
+        friend = self._profiles[self._current_position]
+        self._current_position += 1
+        return friend
+
+
+class Facebook(Iterable[str]):
+    def __init__(self) -> None:
+        self._profiles = ["alice@example.com", "bob@example.com", "charlie@example.com"]
+
+    def __iter__(self) -> FacebookIterator:
+        """Returns the custom iterator."""
+        return FacebookIterator(self._profiles)
+
+
+# --- Pythonic Generator Iterator (Best Practice) ---
+
+class PythonicFacebook:
+    def __init__(self) -> None:
+        self._profiles = ["alice@example.com", "bob@example.com", "charlie@example.com"]
+
+    def __iter__(self):
+        """A generator automatically implements __iter__ and __next__ protocols."""
+        for profile in self._profiles:
+            yield profile
+
+
+# --- Usage ---
+if __name__ == "__main__":
+    print("--- GoF Iterator ---")
+    fb = Facebook()
+    for friend in fb:  # Python implicitly handles StopIteration
+        print(f"Friend: {friend}")
+
+    print("\n--- Generator Iterator ---")
+    py_fb = PythonicFacebook()
+    for friend in py_fb:
+        print(f"Friend: {friend}")
+```
+
 ## Step-by-step explanation
-1. Define the Iterator interface with `hasNext()` and `getNext()` methods.
+1. Define the Iterator interface with `hasNext()` and `getNext()` methods (or use language protocols like `__iter__` and `__next__` in Python).
 2. Define the Collection interface with a method that returns an Iterator.
 3. Create Concrete Collections that hold data.
 4. Create Concrete Iterators that take a collection, maintain an internal cursor, and implement the iteration logic.
@@ -143,6 +199,8 @@ public class Main {
 1. **Java Collections Framework:** Every collection (`List`, `Set`) implements `Iterable`, allowing the use of enhanced for-loops.
 2. **Database Cursors:** Iterating over result sets row by row without loading the entire table into memory.
 3. **File System Traversals:** Iterating over files in a directory tree (e.g., Depth-First or Breadth-First).
+4. **Python's `iter()` and `next()` protocol:** Used implicitly by every `for` loop in Python to traverse lists, dicts, generators, and files.
+5. **Streaming JSON/CSV Parsers:** Iterating through massive datasets line-by-line via iterators, avoiding loading the entire file into RAM.
 
 ## Pros
 - **Single Responsibility Principle:** You can clean up the client code and the collections by extracting bulky traversal algorithms into separate classes.
@@ -158,16 +216,33 @@ public class Main {
 ### Beginner
 - **Q: What is the main benefit of the Iterator pattern?**
   - **A:** It hides the internal structure of a collection, providing a uniform way to traverse different types of data structures.
+- **Q: What does a `StopIteration` exception do in Python?**
+  - **A:** It signals to the iteration context (like a `for` loop) that all elements have been traversed and there are no further items to return, terminating the loop.
 
 ### Intermediate
 - **Q: How does Iterator support the Single Responsibility Principle?**
   - **A:** It separates the responsibility of storing data (the Collection) from the responsibility of traversing that data (the Iterator).
+- **Q: What is the difference between an external iterator and an internal iterator?**
+  - **A:** 
+    - **External iterator:** The client controls the iteration process (e.g., explicitly calling `next()` or using a `while(hasNext)` loop).
+    - **Internal iterator:** The collection itself controls the iteration process by taking a function/callback and applying it to each element (e.g., `list.forEach(item -> ...)` in Java/JS).
 
 ### Senior
 - **Q: How do you handle concurrent modifications to a collection while an iterator is traversing it?**
   - **A:** This is a classic problem (e.g., `ConcurrentModificationException` in Java). Solutions include:
-    1. **Fail-fast iterators:** The collection maintains a `modCount`. The iterator checks this count and throws an exception if it changed.
-    2. **Fail-safe iterators:** The iterator works on a clone/snapshot of the collection (e.g., `CopyOnWriteArrayList`).
+    1. **Fail-fast iterators:** The collection maintains a modification counter (`modCount`). The iterator checks this count on every `next()` call and throws an exception if the collection has been modified outside the iterator.
+    2. **Fail-safe/Weakly-consistent iterators:** The iterator works on a copy or a consistent snapshot of the collection (e.g., Java's `CopyOnWriteArrayList`), allowing modifications during traversal.
+- **Q: How do generators and coroutines in modern programming languages map to the Iterator pattern?**
+  - **A:** Generators are syntactical sugar for compiling a state machine that implements the Iterator protocol. When `yield` is encountered, the execution frame is suspended, saving local state, and the yielded value is returned via `next()`. Subscriptions and coroutines extend this model to receive values.
+
+### Staff Engineer
+- **Q: How does Python's execution model handle generator functions (`yield`) under the hood?**
+  - **A:** When a generator function is called, Python compiles the function code, but instead of executing it, it returns a generator object wrapping a stack frame pointer. Each call to `next()` resumes execution of the stack frame until a `yield` statement is hit, where Python freezes the frame state (local variables, instruction pointer) and pops the frame. When the frame returns or raises `StopIteration`, the generator is marked as completed.
+- **Q: In a large-scale distributed search system, how would you design a Paginated Cursor/Iterator that consumes data from multiple distributed databases (like Cassandra/DynamoDB) while maintaining sort order?**
+  - **A:** Implement a **Sorted Merge Iterator** (Priority Queue/Heap-based Iterator). 
+    1. Open a paginated cursor to each partition node (sub-iterators).
+    2. Read the first element from each sub-iterator and insert it into a Min-Heap.
+    3. The main iterator's `next()` operation pops the smallest element from the heap, reads the next element from that popped item's originating sub-iterator, and pushes it back onto the heap. This maintains $O(\log K)$ sorting complexity (where $K$ is the number of databases) during stream traversal.
 
 ## Common mistakes
 - Creating complex, custom iterators for simple lists when the language's built-in iterators suffice.
@@ -186,5 +261,5 @@ public class Main {
 The Iterator pattern provides a standard way to loop through collections of varying complexity without exposing their internal representations. It is foundational to modern programming languages and standard libraries.
 
 ## Related topics
-- Composite Pattern
+- [Composite Pattern](../../structural/composite)
 - [Visitor Pattern](../visitor)

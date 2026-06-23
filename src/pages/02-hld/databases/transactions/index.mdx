@@ -1,186 +1,284 @@
 # Transactions
 
 ## Introduction
-Transactions are a sequence of operations performed as a single logical unit that must either fully succeed or fully fail.
+A database **transaction** is a sequence of read and write operations executed as a single, logical unit of work. To ensure database integrity, a transaction must either execute completely (commit) or have no effect at all (abort/rollback), even in the face of concurrent requests, network partitions, or system crashes.
+
+---
 
 ## Problem Statement
-Without atomic operations, partial updates can leave data in inconsistent state.
+In multi-user database environments:
+1.  **Partial Failures:** If a system crashes halfway through transferring money between accounts (debited but not credited), data becomes corrupted.
+2.  **Concurrency Anomalies:** If two users edit the same record simultaneously, one update may overwrite the other without their knowledge (Lost Update).
+3.  **Read Inconsistencies:** If an analytics query runs while updates are being committed, it may calculate totals using half-old and half-new values, producing incorrect reports.
 
-## Why this exists
-Transactions ensure consistency, isolation, and recoverability in systems that modify multiple pieces of state.
+---
 
-## Real-world analogy
-A banking transfer either debits one account and credits another or it does nothing at all.
+## Why This Exists
+Transactions exist to abstract the complexity of concurrency control and fault recovery away from application developers. Instead of writing custom retry, locking, and rollback logic, developers can wrap operations in a transaction block. The database storage engine guarantees that the data remains consistent and durable.
+
+---
+
+## Real-world Analogy
+Imagine buying a drink from a vending machine.
+*   **The Workflow:** You insert money ($2), press the button for a soda, the machine dispenses the soda, and you take it.
+*   **Atomicity:** If the soda bottle gets stuck on the coil, the machine returns your $2. It does not keep your money while giving you nothing.
+*   **Consistency:** The machine maintains a correct inventory count and cash balance throughout the process.
+*   **Isolation:** If another person tries to purchase a drink at the same time on a dual-dispenser machine, their process does not block or mix up your selection.
+*   **Durability:** Once the soda drops, the transaction is finalized. Even if the machine loses power a second later, you still have the soda, and the machine keeps the record of cash inserted.
+
+---
 
 ## Definition
-A transaction is a unit of work that follows ACID properties: Atomicity, Consistency, Isolation, Durability.
+A transaction is a boundary-defined group of database operations that guarantees **ACID** properties:
+*   **Atomicity:** All operations in the transaction succeed, or all are rolled back.
+*   **Consistency:** A transaction shifts the database from one valid state (respecting all schema constraints, triggers, and foreign keys) to another.
+*   **Isolation:** The execution of concurrent transactions yields the same database state as if they had run sequentially.
+*   **Durability:** Once committed, changes are written to non-volatile storage (disk/SSD) and will survive subsequent system crashes.
 
-## Key concepts
-- **Atomicity**: all or nothing
-- **Consistency**: valid state transitions
-- **Isolation**: concurrent transactions do not interfere
-- **Durability**: committed results survive failures
-- **Two-phase commit**
+---
 
-## Internal working
-Transactions use locks, write-ahead logs, and commit protocols to coordinate updates.
+## Key Concepts
 
-### Mermaid sequence diagram
+### 1. Concurrency Anomalies (Phenomena)
+*   **Dirty Read:** Transaction A reads data modified by Transaction B that has *not yet been committed*. If B aborts, A has read invalid data.
+*   **Non-Repeatable Read (Fuzzy Read):** Transaction A reads a row. Transaction B updates the row and commits. Transaction A re-reads the row and finds different values.
+*   **Phantom Read:** Transaction A executes a range query (e.g., `WHERE age > 30`). Transaction B inserts a new row matching the filter and commits. Transaction A re-runs the query and sees new "phantom" rows.
+*   **Write Skew:** Two transactions read overlapping data sets, make decisions based on what they read, and perform writes that violate a business rule. Example: Two doctors are on call. Both try to log off concurrently. The rule is "at least one doctor must be on call." Both see that two are active, both log off, leaving zero doctors on call.
+
+### 2. Transaction Isolation Levels
+ANSI SQL defines four isolation levels to balance consistency against concurrency:
+
+| Isolation Level | Dirty Reads | Non-Repeatable Reads | Phantom Reads | Write Skew | Performance |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Read Uncommitted** | Allowed | Allowed | Allowed | Allowed | Highest |
+| **Read Committed** | Prevented | Allowed | Allowed | Allowed | High |
+| **Repeatable Read** | Prevented | Prevented | Allowed | Allowed | Medium |
+| **Serializable** | Prevented | Prevented | Prevented | Prevented | Lowest |
+
+### 3. Concurrency Control Mechanisms
+*   **Two-Phase Locking (2PL):** A pessimistic lock-based protocol.
+    *   *Growing Phase:* Transaction acquires locks but cannot release any.
+    *   *Shrinking Phase:* Transaction releases locks but cannot acquire new ones.
+*   **MVCC (Multi-Version Concurrency Control):** An optimistic protocol where reads do not block writes, and writes do not block reads. Each write creates a new version of the row with a timestamp/version ID. Readers read a consistent snapshot of the data matching their start timestamp.
+
+### 4. Distributed Transactions
+When a transaction spans multiple database nodes:
+*   **Two-Phase Commit (2PC):** A blocking protocol. A coordinator asks participants to prepare. If all agree, the coordinator instructs all to commit. If one aborts, all abort.
+*   **Saga Pattern:** A non-blocking, eventually consistent alternative. Breaks a transaction into a sequence of local transactions. If one step fails, the coordinator executes **compensating transactions** in reverse order to undo changes.
+
+---
+
+## Internal Working & Protocols
+
+### Two-Phase Commit (2PC) Flow
 ```mermaid
 sequenceDiagram
-    participant T as Transaction
-    participant DB as Database
-    T->>DB: begin()
-    T->>DB: write(key1)
-    T->>DB: write(key2)
-    T->>DB: commit()
-    DB-->>T: ack
+    participant Coordinator
+    participant NodeA as Node A (Participant)
+    participant NodeB as Node B (Participant)
+
+    Note over Coordinator, NodeB: Phase 1: Prepare
+    Coordinator->>NodeA: Prepare? (Can you commit?)
+    Coordinator->>NodeB: Prepare? (Can you commit?)
+    NodeA-->>Coordinator: Yes (Voted Commit)
+    NodeB-->>Coordinator: Yes (Voted Commit)
+
+    Note over Coordinator, NodeB: Phase 2: Commit
+    Coordinator->>NodeA: Commit!
+    Coordinator->>NodeB: Commit!
+    NodeA-->>Coordinator: Acknowledged
+    NodeB-->>Coordinator: Acknowledged
 ```
 
-## Python implementation
+---
 
-### Bad implementation
-A set of updates without rollback.
+## Java Implementation: Simplified MVCC Storage Engine
 
-```python
-class BadTransaction:
-    def __init__(self, store):
-        self.store = store
+The following code simulates an MVCC-based storage engine where readers get a consistent snapshot of the data, and writes detect conflict using optimistic concurrency control.
 
-    def execute(self, operations):
-        for key, value in operations:
-            self.store[key] = value
+```java
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+
+// Represents a versioned record
+class VersionedRecord {
+    final long versionId;
+    final String value;
+
+    public VersionedRecord(long versionId, String value) {
+        this.versionId = versionId;
+        this.value = value;
+    }
+}
+
+// MVCC Transaction
+class MVCCTransaction {
+    final long readTxId;
+    final Map<String, String> writeBuffer = new HashMap<>();
+
+    public MVCCTransaction(long txId) {
+        this.readTxId = txId;
+    }
+}
+
+// MVCC Database Engine
+class MVCCDatabase {
+    private final AtomicLong txCounter = new AtomicLong(0);
+    // Maps Key -> List of versions sorted by version ID descending
+    private final Map<String, List<VersionedRecord>> store = new HashMap<>();
+
+    public synchronized MVCCTransaction begin() {
+        return new MVCCTransaction(txCounter.incrementAndGet());
+    }
+
+    public synchronized String read(MVCCTransaction tx, String key) {
+        // Read local write buffer first
+        if (tx.writeBuffer.containsKey(key)) {
+            return tx.writeBuffer.get(key);
+        }
+
+        List<VersionedRecord> versions = store.get(key);
+        if (versions == null || versions.isEmpty()) {
+            return null;
+        }
+
+        // Return the latest version that is <= the transaction's read timestamp
+        for (VersionedRecord record : versions) {
+            if (record.versionId <= tx.readTxId) {
+                return record.value;
+            }
+        }
+        return null; // No version was committed before this transaction started
+    }
+
+    public void write(MVCCTransaction tx, String key, String value) {
+        tx.writeBuffer.put(key, value);
+    }
+
+    public synchronized boolean commit(MVCCTransaction tx) {
+        long commitTxId = txCounter.incrementAndGet();
+
+        // Validate conflicts: Check if any key we wrote was modified after our readTxId
+        for (String key : tx.writeBuffer.keySet()) {
+            List<VersionedRecord> versions = store.get(key);
+            if (versions != null && !versions.isEmpty()) {
+                long latestVersion = versions.get(0).versionId;
+                if (latestVersion > tx.readTxId) {
+                    System.out.println("Write conflict detected on key: " + key + ". Aborting Tx: " + tx.readTxId);
+                    return false; // Conflict! Abort transaction
+                }
+            }
+        }
+
+        // Apply writes
+        for (Map.Entry<String, String> entry : tx.writeBuffer.entrySet()) {
+            List<VersionedRecord> versions = store.computeIfAbsent(entry.getKey(), k -> new ArrayList<>());
+            // Add new version at index 0 (descending order)
+            versions.add(0, new VersionedRecord(commitTxId, entry.getValue()));
+        }
+
+        System.out.println("Transaction " + tx.readTxId + " committed successfully at version " + commitTxId);
+        return true;
+    }
+}
 ```
 
-### Better implementation
-A local rollback mechanism.
+---
 
-```python
-class Transaction:
-    def __init__(self, store):
-        self.store = store
-        self.backup = {}
+## Step-by-Step Explanation: MVCC Read-Write Flow
+1.  **Transaction Starts:** An application begins a transaction (`tx1`). The database allocates it a read timestamp (`TxID = 100`).
+2.  **Consistent Read:** `tx1` queries `SELECT balance FROM accounts WHERE id = 1`. The database engine scans the versions of account 1 and returns the latest version committed *before or at* `TxID = 100`.
+3.  **Concurrent Update:** Another transaction `tx2` (`TxID = 101`) starts, modifies account 1's balance to `$150`, and commits.
+4.  **Repeatable Read Guarantee:** `tx1` queries the balance again. Because it reads versions $\le 100$, it still sees the old balance (e.g., `$100`), ignoring the update committed at `101`.
+5.  **Write Conflict & Commit:** If `tx1` tries to update account 1, the engine detects that the latest version (`101`) is greater than `tx1`'s read version (`100`). The engine aborts `tx1` to prevent a lost update.
 
-    def execute(self, operations):
-        for key, value in operations:
-            self.backup[key] = self.store.get(key)
-            self.store[key] = value
+---
 
-    def rollback(self):
-        for key, value in self.backup.items():
-            if value is None:
-                self.store.pop(key, None)
-            else:
-                self.store[key] = value
-```
+## Multiple Real-world Examples
 
-### Best implementation
-A transaction coordinator with commit and rollback.
+1.  **PostgreSQL MVCC:** PostgreSQL does not overwrite data during updates. An `UPDATE` operation writes a new version of the row (tuple) to disk. The vacuum process eventually reclaims dead tuples once no active transaction can see them.
+2.  **Spring Boot (`@Transactional`):** Manages transaction boundaries declaratively. Under the hood, it uses an AOP interceptor to bind database connections to the current thread and invoke commit/rollback on completion.
+3.  **Distributed Sagas (Uber/Microservices):** A booking workflow: 1) Reserve car (success), 2) Reserve hotel (success), 3) Reserve flight (fails). The saga coordinator triggers compensating APIs to cancel the hotel and car bookings.
+4.  **Bitcoin UTXO Model:** Bitcoin transactions are non-interactive sets of Unspent Transaction Outputs (UTXOs). Atomicity is enforced because miners reject any block containing double-spend inputs.
 
-```python
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Dict, List, Tuple
+---
 
-class TransactionState(Enum):
-    ACTIVE = "active"
-    COMMITTED = "committed"
-    ABORTED = "aborted"
+## Pros & Cons
 
-@dataclass
-class Transaction:
-    operations: List[Tuple[str, Any]]
-    state: TransactionState = TransactionState.ACTIVE
-    backup: Dict[str, Any] = None
+### Pros
+*   **Data Integrity:** Guarantees that system failures do not result in partial writes or inconsistent states.
+*   **Concurrent Access:** MVCC enables highly concurrent workloads where read operations do not block write operations.
+*   **Error Recovery:** Simplifies application error handling through rollback mechanisms.
 
-class TransactionManager:
-    def __init__(self, store: Dict[str, Any]):
-        self.store = store
+### Cons
+*   **Performance Overhead:** Writing to WAL logs, managing locks, and maintaining row versions increases query latency.
+*   **Scalability Bottlenecks:** Distributed transactions require synchronization across network nodes, which degrades system throughput.
+*   **Storage Bloat:** MVCC systems require regular cleaning/vacuuming to delete old row versions, consuming I/O cycles.
 
-    def begin(self, operations: List[Tuple[str, Any]]) -> Transaction:
-        return Transaction(operations=operations, backup={})
-
-    def commit(self, tx: Transaction) -> bool:
-        try:
-            for key, value in tx.operations:
-                tx.backup[key] = self.store.get(key)
-                self.store[key] = value
-            tx.state = TransactionState.COMMITTED
-            return True
-        except Exception:
-            self.rollback(tx)
-            return False
-
-    def rollback(self, tx: Transaction) -> None:
-        for key, value in tx.backup.items():
-            if value is None:
-                self.store.pop(key, None)
-            else:
-                self.store[key] = value
-        tx.state = TransactionState.ABORTED
-```
-
-## Step-by-step explanation
-1. Begin a transaction and isolate the operation set.
-2. Perform writes while preserving previous state.
-3. Commit to make changes durable, or rollback on failure.
-
-## Multiple real-world examples
-- Relational databases use ACID transactions.
-- Distributed transactions use two-phase commit or sagas.
-- Payment workflows require atomic transfers.
-
-## Pros
-- Prevents partial state updates.
-- Makes complex operations predictable.
-- Supports strong consistency guarantees.
-
-## Cons
-- Can reduce concurrency due to locking.
-- May increase latency and coordination overhead.
-- Distributed transactions are hard to scale.
+---
 
 ## Interview Questions
+
 ### Beginner
-- What are ACID properties?
-- Answer: Atomicity, Consistency, Isolation, Durability.
+*   **Q:** What does ACID stand for? Explain each term.
+*   **A:** 
+    *   **Atomicity:** All operations in the group must succeed or fail together.
+    *   **Consistency:** Validates that data follows schema constraints and business rules.
+    *   **Isolation:** Concurrent transactions must execute without interfering with one another.
+    *   **Durability:** Committed data is written to persistent storage and survives power outages.
 
 ### Intermediate
-- When would you use a saga instead of a distributed transaction?
-- Answer: When you need eventual consistency and want to avoid two-phase commit overhead.
+*   **Q:** What is MVCC (Multi-Version Concurrency Control)?
+*   **A:** MVCC is a concurrency control method where the database maintains multiple versions of a single record. Instead of locking data for reads, readers look at a snapshot of the data as of a certain point in time, allowing concurrent reads and writes to happen without blocking.
 
 ### Senior
-- How does isolation level affect transaction behavior?
-- Answer: It determines the allowed visibility of concurrent changes and impacts phenomena like dirty reads.
+*   **Q:** How does a Write-Ahead Log (WAL) ensure durability and atomicity in the event of an abrupt power failure?
+*   **A:** Before modifying a database page in memory, the engine writes the intended change to a sequential, append-only log on disk (WAL). If the system crashes, the engine uses the WAL upon startup to perform:
+    1.  **Redo (Roll-Forward):** Apply committed changes that were in memory but not yet written to the database pages on disk.
+    2.  **Undo (Rollback):** Revert changes from uncommitted transactions that made it to disk.
 
 ### Staff Engineer
-- Design a transaction model for a microservices payment platform.
-- Answer: Use local transactions for each service and orchestrate with a saga or reliable messaging for cross-service consistency.
+*   **Q:** In a microservices architecture, how do you choose between the Two-Phase Commit (2PC) protocol and the Saga Pattern? What are the architectural trade-offs?
+*   **A:** 2PC provides strong, immediate consistency across services but is blocking and susceptible to single points of failure, network delays, and deadlocks. It requires resources to lock until completion, limiting scale. Sagas trade immediate consistency for high availability and throughput by using eventual consistency. They use local transactions and compensating actions to handle failures. Sagas are preferred for large-scale microservices, while 2PC is reserved for critical, low-throughput systems where eventual consistency is unacceptable.
 
-## Common mistakes
-- Relying on serializable isolation for every workload.
-- Ignoring deadlock handling.
-- Using distributed transactions without evaluating alternatives.
+---
 
-## Best practices
-- Keep transactions short and focused.
-- Use optimistic concurrency when possible.
-- Prefer eventual consistency for large distributed workflows.
+## Common Mistakes
+*   **Keeping Transactions Open Too Long:** Doing network calls (e.g., calling an external payment API) inside a database transaction block. This holds database connections and locks open, exhausting connection pools.
+*   **Assuming Read Committed Prevents Non-Repeatable Reads:** Relying on Read Committed when executing reports that run the same query multiple times and expect identical results.
+*   **Overlooking Deadlocks:** Forgetting to ensure that concurrent transactions lock resource tables in the same order.
 
-## When NOT to use
-- High-throughput analytics where ACID slows writes.
-- Systems that can tolerate eventual consistency.
+---
 
-## Comparison with similar concepts
-- **Two-phase commit:** a protocol for distributed transaction atomicity.
-- **Sagas:** an eventual consistency alternative.
-- **Replication:** transactions are still needed to update replicated state consistently.
+## Best Practices
+*   **Keep Transactions Small:** Read only the data necessary and execute writes quickly to minimize lock durations.
+*   **Avoid External I/O:** Perform API calls, file writes, and long computations outside the database transaction boundary.
+*   **Utilize Optimistic Locking:** For high-contention systems, use version numbers on records (`WHERE version = :current_version`) instead of exclusive write locks.
+
+---
+
+## When NOT to Use
+*   **High-Volume Logging / Analytics:** Real-time logging or clickstream ingestion where high throughput is required, and losing a few records is acceptable.
+*   **Idempotent Eventual Consistency:** Systems where operations are naturally idempotent and can be safely retried without transaction state tracking.
+
+---
+
+## Comparison with Similar Concepts
+
+*   **ACID vs. BASE:** ACID focuses on strong consistency and safety (relational DBs). BASE (Basically Available, Soft state, Eventual consistency) focuses on high availability and scaling (NoSQL).
+*   **2PC vs. Saga:** 2PC guarantees atomicity instantly through locks and coordination. Sagas guarantee eventual consistency through sequential local transactions and compensations.
+
+---
 
 ## Summary
-Transactions are the foundation of consistent data updates. The system must choose the right transaction model for performance, scale, and correctness.
+Transactions are a cornerstone of reliable software architecture. Understanding the trade-offs of different isolation levels, concurrency mechanisms (such as MVCC), and distributed protocols (like Sagas) is essential for designing resilient database systems and microservices.
 
-## Related topics
+---
+
+## Related Topics
 - [CAP Theorem](../../fundamentals/cap-theorem)
 - [Replication](../replication)
 - [Partitioning](../partitioning)
 - [Sharding](../sharding)
+- [SQL](../sql)
+- [NoSQL](../nosql)

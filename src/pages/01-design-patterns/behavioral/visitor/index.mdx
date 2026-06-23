@@ -123,10 +123,73 @@ public class Main {
 }
 ```
 
+### Python Implementation
+In Python, which does not support static method overloading, Double Dispatch is accomplished by defining distinct visitor methods for each class (e.g., `visit_circle` and `visit_square`) and calling them from the elements' `accept` method.
+
+```python
+from abc import ABC, abstractmethod
+import math
+
+# 1. Element Interface
+class Shape(ABC):
+    @abstractmethod
+    def accept(self, visitor: "Visitor") -> None:
+        pass
+
+
+# 2. Concrete Elements
+class Circle(Shape):
+    def __init__(self, radius: float) -> None:
+        self.radius = radius
+
+    def accept(self, visitor: "Visitor") -> None:
+        # Explicit dispatch to specific visitor method
+        visitor.visit_circle(self)
+
+
+class Square(Shape):
+    def __init__(self, side: float) -> None:
+        self.side = side
+
+    def accept(self, visitor: "Visitor") -> None:
+        visitor.visit_square(self)
+
+
+# 3. Visitor Interface
+class Visitor(ABC):
+    @abstractmethod
+    def visit_circle(self, circle: Circle) -> None:
+        pass
+
+    @abstractmethod
+    def visit_square(self, square: Square) -> None:
+        pass
+
+
+# 4. Concrete Visitor
+class AreaCalculatorVisitor(Visitor):
+    def visit_circle(self, circle: Circle) -> None:
+        area = math.pi * circle.radius * circle.radius
+        print(f"Circle area: {area:.2f}")
+
+    def visit_square(self, square: Square) -> None:
+        area = square.side * square.side
+        print(f"Square area: {area:.2f}")
+
+
+# 5. Usage
+if __name__ == "__main__":
+    shapes: list[Shape] = [Circle(5.0), Square(4.0)]
+    area_calculator = AreaCalculatorVisitor()
+
+    for shape in shapes:
+        shape.accept(area_calculator)
+```
+
 ## Step-by-step explanation
 1. Define a `Visitor` interface with a `visit` method overloaded for every concrete element class.
 2. Define an `accept(Visitor)` method in the element hierarchy base class.
-3. Implement `accept` in all concrete elements. It must exactly be: `visitor.visit(this)`. This is the crux of **Double Dispatch**: the element tells the visitor what type it is.
+3. Implement `accept` in all concrete elements. It must exactly be: `visitor.visit(this)` (or call class-specific methods like `visitor.visit_circle(this)` in dynamic languages). This is the crux of **Double Dispatch**: the element tells the visitor what type it is.
 4. Create concrete visitors implementing the business logic for the new feature (e.g., XML export, area calculation).
 5. The client iterates over the elements and passes the concrete visitor to their `accept` methods.
 
@@ -134,6 +197,8 @@ public class Main {
 1. **Compilers / Abstract Syntax Trees (AST):** Parsing a code tree where nodes are `Variable`, `Function`, `Expression`. A `TypeCheckingVisitor`, `CodeGenerationVisitor`, and `PrettyPrintVisitor` can traverse the tree without modifying the node classes.
 2. **Document Object Model (DOM):** Traversing HTML/XML elements to extract text or apply formatting.
 3. **Report Generation:** Iterating over a list of employee objects (`Manager`, `Engineer`, `Sales`) to calculate bonuses without putting bonus logic inside the employee classes.
+4. **Python `ast.NodeVisitor`:** Python's built-in `ast` module uses the Visitor pattern to let developers inspect or transform Abstract Syntax Trees.
+5. **Static Analysis & Linters:** Linters (like ESLint or Pylint) traverse code trees via visitors to flag style rules and code violations.
 
 ## Pros
 - **Open/Closed Principle:** You can introduce a new behavior that works with objects of different classes without altering those classes.
@@ -149,14 +214,28 @@ public class Main {
 ### Beginner
 - **Q: What is the main purpose of the Visitor pattern?**
   - **A:** To add new operations to existing class hierarchies without modifying those classes.
+- **Q: Why is the `accept()` method implemented on each concrete element instead of just in the base class?**
+  - **A:** Because compile-time type binding (static dispatch) needs the concrete type of the class invoking `visitor.visit(this)`. Implementing it in the base class would only provide a base class type reference, breaking overloading.
 
 ### Intermediate
 - **Q: What is "Double Dispatch" in the context of the Visitor pattern?**
   - **A:** In Java/C++, method overloading is resolved at compile time based on the reference type, not runtime type. If you call `visitor.visit(shape)`, it looks for a generic `visit(Shape)` method. By calling `shape.accept(visitor)` (first dispatch), the specific shape class calls `visitor.visit(this)` (second dispatch). Since `this` is strongly typed at compile time inside the specific class, the compiler correctly routes to `visit(Circle)`.
+- **Q: Since Python doesn't have method overloading, how is Double Dispatch achieved in Python?**
+  - **A:** By explicitly invoking distinct method names on the visitor based on the element type. For example, `Circle.accept` explicitly calls `visitor.visit_circle(self)`, and `Square.accept` calls `visitor.visit_square(self)`.
 
 ### Senior
 - **Q: When should you avoid using the Visitor pattern?**
   - **A:** You should avoid it if the Element class hierarchy changes frequently. Every time you add a new Element type, you have to modify the Visitor interface and all its implementations, making maintenance a nightmare. It is only suited for stable class hierarchies.
+- **Q: How does the Visitor pattern violate encapsulation?**
+  - **A:** To perform operations on elements, the visitor needs to access the internals of those element objects. This often forces the elements to provide public getters or expose private state that would otherwise remain hidden inside the object.
+
+### Staff Engineer
+- **Q: In compiler design, how do you handle state propagation or scope resolution while traversing an Abstract Syntax Tree (AST) using a Visitor?**
+  - **A:** State propagation is handled by maintaining internal state tables inside the Visitor object itself (such as a Symbol Table stack) or returning values from the visit methods. When the visitor enters a scope node (like a function or block), it pushes a new symbol scope; when it visits variables, it resolves them against the scope stack; and when it exits, it pops the scope.
+- **Q: How does Python's `ast.NodeVisitor` class work? What design pattern does it implement, and what are its tradeoffs?**
+  - **A:** `ast.NodeVisitor` uses dynamic dispatch. Its default `visit` method inspects the node's class name dynamically (e.g., `Class: NameNode` -> `visit_Name`), looks up the method using `getattr(self, f"visit_{class_name}", self.generic_visit)`, and invokes it.
+    - *Pros:* Decouples node classes from the visitor; nodes don't need `accept()` methods.
+    - *Cons:* Relies on string reflection and dynamic lookup on every traversal, which is slower than Java's compiler-bound Double Dispatch.
 
 ## Common mistakes
 - Trying to use `instanceof` inside a `for` loop instead of implementing the `accept` method. `instanceof` checks are slow and violate OOP principles; double dispatch is the correct approach.
@@ -176,5 +255,5 @@ public class Main {
 The Visitor pattern is a highly specialized tool for adding capabilities to closed, stable class hierarchies (like ASTs). Through the magic of double dispatch, it cleanly separates operations from data objects, though at the cost of tying the Visitor interface tightly to the existing hierarchy.
 
 ## Related topics
-- Composite Pattern
+- [Composite Pattern](../../structural/composite)
 - [Iterator Pattern](../iterator)

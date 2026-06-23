@@ -137,6 +137,70 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. State Interface
+class VendingMachineState(ABC):
+    @abstractmethod
+    def insert_coin(self) -> None:
+        pass
+
+    @abstractmethod
+    def dispense_item(self) -> None:
+        pass
+
+# 2. Concrete States
+class IdleState(VendingMachineState):
+    def __init__(self, machine: "VendingMachine") -> None:
+        self._machine = machine
+
+    def insert_coin(self) -> None:
+        print("Coin inserted.")
+        self._machine.set_state(self._machine.has_coin_state)
+
+    def dispense_item(self) -> None:
+        print("Insert a coin first.")
+
+class HasCoinState(VendingMachineState):
+    def __init__(self, machine: "VendingMachine") -> None:
+        self._machine = machine
+
+    def insert_coin(self) -> None:
+        print("Coin already inserted.")
+
+    def dispense_item(self) -> None:
+        print("Item dispensed.")
+        self._machine.set_state(self._machine.idle_state)
+
+# 3. Context
+class VendingMachine:
+    def __init__(self) -> None:
+        self.idle_state = IdleState(self)
+        self.has_coin_state = HasCoinState(self)
+        self._current_state: VendingMachineState = self.idle_state
+
+    def set_state(self, state: VendingMachineState) -> None:
+        self._current_state = state
+
+    def insert_coin(self) -> None:
+        self._current_state.insert_coin()
+
+    def dispense_item(self) -> None:
+        self._current_state.dispense_item()
+
+
+# --- Usage ---
+if __name__ == "__main__":
+    machine = VendingMachine()
+    
+    machine.dispense_item()  # Output: Insert a coin first.
+    machine.insert_coin()    # Output: Coin inserted.
+    machine.insert_coin()    # Output: Coin already inserted.
+    machine.dispense_item()  # Output: Item dispensed.
+```
+
 ## Step-by-step explanation
 1. Identify all possible states of the object.
 2. Create a common interface defining all actions that can trigger state transitions.
@@ -148,6 +212,7 @@ public class Main {
 2. **Document Publishing:** Draft, Review, Published states.
 3. **TCP Connection:** Established, Listening, Closed states.
 4. **Video Game Characters:** Standing, Jumping, Ducking, Attacking states.
+5. **Distributed Order Workflows:** Order processing systems tracking status: `Created` → `Paid` → `Shipped` → `Delivered` or `Cancelled`.
 
 ## Pros
 - **Single Responsibility Principle:** Organizes code related to particular states into separate classes.
@@ -163,14 +228,33 @@ public class Main {
 ### Beginner
 - **Q: What problem does the State pattern solve?**
   - **A:** It eliminates massive `switch/case` or `if-else` statements that control an object's behavior based on its internal state.
+- **Q: Can a State pattern have transitions triggered inside the Context class?**
+  - **A:** Yes, if the transition logic is linear or simple, the context can handle the state transitions. However, if transitions are complex and state-dependent, it's cleaner for concrete states to trigger them.
 
 ### Intermediate
 - **Q: Who handles the state transitions? The Context or the Concrete States?**
   - **A:** Usually, the Concrete States handle the transitions by calling a setter on the Context (e.g., `context.setState(newState)`). However, if the state machine is strictly linear, the Context can handle it.
+- **Q: How can we avoid creating new state objects constantly during transitions?**
+  - **A:** If states carry no instance-specific data (i.e. they are stateless), they can be shared. You can make each state class a Singleton, or pre-instantiate all states inside the Context (like the `VendingMachine` example does).
 
 ### Senior
 - **Q: What is the primary difference between the Strategy pattern and the State pattern?**
   - **A:** Strategy is meant for interchanging algorithms chosen by the client; the strategies are usually unaware of each other. State is a finite-state machine implementation; the states are often aware of each other and actively trigger transitions from one state to another.
+- **Q: How would you design a thread-safe state transition in the State pattern?**
+  - **A:** Make `setState` synchronized (in Java) or use locks (like Python's `threading.Lock`) when modifying the current state reference. If multiple threads can trigger actions that transition state concurrently, ensure the transition logic is atomic or uses thread-safe state checks.
+
+### Staff Engineer
+- **Q: In a highly concurrent distributed state machine (e.g., an order workflow system), how do you implement the State pattern while managing database state persistence and race conditions?**
+  - **A:** In distributed systems, the State pattern is combined with database transactions. We store the current state value (e.g., as a string enum column) in the database. When a state transition occurs:
+    1. We load the entity using pessimistic locking (`SELECT FOR UPDATE`) or optimistic concurrency control (using a `version` column).
+    2. We map the database state to the corresponding GoF State object.
+    3. We call the action, execute business logic, and update the state in-memory.
+    4. We persist the updated state string and release the lock, ensuring consistency.
+- **Q: When would you use a centralized State Machine framework (like Spring StateMachine or a workflow engine like Temporal) over the GoF State pattern?**
+  - **A:** Choose a framework/engine when:
+    - You need persistence, distributed transactions, retry-on-failure, or long-running steps that span hours/days (Temporal is perfect here).
+    - The state transitions are complex, defined by a large directed graph, and require visual tooling, audits, or declarative definition (e.g. JSON/YAML/XML).
+    - Use GoF State pattern for simple, memory-only state transitions within a single JVM/process boundary.
 
 ## Common mistakes
 - Not sharing state instances. If states have no fields (no local variables), they can be instantiated once as Singletons to save memory.
@@ -192,3 +276,4 @@ The State pattern is the object-oriented way to build finite-state machines. By 
 ## Related topics
 - [Strategy Pattern](../strategy)
 - [Singleton Pattern](../../creational/singleton)
+- [Flyweight Pattern](../../structural/flyweight)

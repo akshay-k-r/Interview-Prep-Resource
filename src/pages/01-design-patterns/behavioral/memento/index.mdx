@@ -119,6 +119,72 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+# 1. Memento: Represents a snapshot (immutable)
+class EditorMemento:
+    def __init__(self, content: str) -> None:
+        self._content = content
+
+    @property
+    def content(self) -> str:
+        """Returns the immutable content (Read-Only)."""
+        return self._content
+
+
+# 2. Originator: The object whose state we are tracking
+class Editor:
+    def __init__(self) -> None:
+        self._content = ""
+
+    def type(self, words: str) -> None:
+        self._content += words
+
+    @property
+    def content(self) -> str:
+        return self._content
+
+    def save(self) -> EditorMemento:
+        """Saves current state into a Memento."""
+        return EditorMemento(self._content)
+
+    def restore(self, memento: EditorMemento) -> None:
+        """Restores state from a Memento."""
+        self._content = memento.content
+
+
+# 3. Caretaker: Manages the history
+class History:
+    def __init__(self) -> None:
+        self._history: list[EditorMemento] = []
+
+    def push(self, memento: EditorMemento) -> None:
+        self._history.append(memento)
+
+    def pop(self) -> EditorMemento | None:
+        if not self._history:
+            return None
+        return self._history.pop()
+
+
+# 4. Usage
+if __name__ == "__main__":
+    editor = Editor()
+    history = History()
+
+    editor.type("Hello ")
+    history.push(editor.save())  # Save "Hello "
+
+    editor.type("World!")
+    print(editor.content)  # Output: Hello World!
+
+    # Perform Undo
+    saved_state = history.pop()
+    if saved_state:
+        editor.restore(saved_state)
+    print(editor.content)  # Output: Hello
+```
+
 ## Step-by-step explanation
 1. Create a `Memento` class with fields corresponding to the `Originator`'s state. Make it immutable (no setters).
 2. Add a `save()` method to the `Originator` that instantiates a `Memento` with its current state.
@@ -129,7 +195,8 @@ public class Main {
 1. **Text Editors:** The classic "Undo/Redo" stack.
 2. **Database Transactions:** Storing the state before a transaction begins, so you can execute a `ROLLBACK` if something fails.
 3. **Browser History:** Navigating back and forth between previous page states.
-4. **Drafts:** Saving a draft of an email or blog post.
+4. **Drafts / Auto-saves:** Saving a draft of an email, form, or blog post, or quick-saving progress in a video game.
+5. **Git Version Control:** Git uses snapshots (mementos) to store project states in commits, utilizing structural sharing to optimize memory.
 
 ## Pros
 - **Encapsulation:** You can produce snapshots of the object's state without exposing its private fields to other objects.
@@ -144,14 +211,26 @@ public class Main {
 ### Beginner
 - **Q: What is the main purpose of the Memento pattern?**
   - **A:** To save and restore an object's state (implementing an Undo feature) without breaking the object's encapsulation.
+- **Q: Who is responsible for storing and managing the list of Memento objects?**
+  - **A:** The Caretaker class. It maintains the history and controls when to save or restore state, but never modifies the mementos.
 
 ### Intermediate
 - **Q: Why must the Memento object be immutable?**
   - **A:** Because a Memento represents a historical snapshot in time. If other classes (like the Caretaker) could modify it, the integrity of the history would be compromised.
+- **Q: How does the Memento pattern compare to the Prototype pattern?**
+  - **A:** Prototype creates an entirely new clone of an object that can be modified independently. Memento captures a passive, read-only snapshot of an object's state specifically for restoration purposes.
 
 ### Senior
 - **Q: How does the Memento pattern compare to the Command pattern for implementing "Undo" functionality?**
   - **A:** Memento saves the *entire state* of an object. Command saves the *action* (the exact changes made). Command takes less memory (you only store the delta), but requires every action to be perfectly reversible. Memento is more memory-intensive but much easier to implement if operations are complex and hard to reverse mathematically. They are often used together.
+- **Q: How do you handle deep serialization of state in a Memento pattern?**
+  - **A:** If the Originator's state references a complex graph of objects, a shallow copy will result in references pointing to active, mutable objects. The Memento must serialize/deep-copy the state. In Python, this can be done using `pickle` or `copy.deepcopy()`; in Java, through serialization or JSON mapper libraries.
+
+### Staff Engineer
+- **Q: In collaborative systems like Google Docs, why is the classical Memento pattern not used for Undo/Redo? What is used instead?**
+  - **A:** In collaborative editing, multiple users write concurrently. If User A does a Memento restore (Undo), they would overwrite concurrent changes made by User B, destroying collaboration. Instead, these systems use **Operational Transformation (OT)** or **Conflict-Free Replicated Data Types (CRDTs)**. They store operations (inserts/deletes) and use algebraic transformations to merge operations in a decentralized manner without resetting the document state wholesale.
+- **Q: When designing an incremental backup system or Git-like VCS, how does the concept of structural sharing optimize the Memento pattern?**
+  - **A:** Storing full snapshots (Mementos) for every version takes up $O(N \cdot M)$ space (where $N$ is versions and $M$ is state size). By using persistent, immutable data structures (like Trie structures or Git's hash-addressed directories), you share nodes that haven't changed between snapshots. A new Memento only creates new nodes for the mutated paths, pointing unchanged branches back to the previous snapshot, reducing space complexity to $O(N \cdot \log M)$.
 
 ## Common mistakes
 - Exposing the internal properties of the Memento to the Caretaker. In strict OOP (like C++), Mementos use `friend` classes to ensure only the Originator can read them.

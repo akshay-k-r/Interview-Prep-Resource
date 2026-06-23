@@ -157,6 +157,87 @@ public class Main {
 }
 ```
 
+### Python Implementation
+Python has built-in decorator syntax (`@decorator`), but the GoF Decorator pattern is about wrapping objects with additional behavior via composition.
+
+```python
+from abc import ABC, abstractmethod
+
+# 1. Component Interface
+class DataSource(ABC):
+    @abstractmethod
+    def write_data(self, data: str) -> None:
+        pass
+
+    @abstractmethod
+    def read_data(self) -> str:
+        pass
+
+# 2. Concrete Component
+class FileDataSource(DataSource):
+    def __init__(self, filename: str):
+        self._filename = filename
+        self._data = ""
+
+    def write_data(self, data: str) -> None:
+        self._data = data
+        print(f"Writing to {self._filename}: {data}")
+
+    def read_data(self) -> str:
+        return f"Raw data from {self._filename}"
+
+# 3. Base Decorator
+class DataSourceDecorator(DataSource):
+    def __init__(self, source: DataSource):
+        self._wrappee = source
+
+    def write_data(self, data: str) -> None:
+        self._wrappee.write_data(data)
+
+    def read_data(self) -> str:
+        return self._wrappee.read_data()
+
+# 4. Concrete Decorators
+class EncryptionDecorator(DataSourceDecorator):
+    def write_data(self, data: str) -> None:
+        encrypted = f"ENCRYPTED({data})"
+        print("Encrypting data...")
+        super().write_data(encrypted)
+
+    def read_data(self) -> str:
+        print("Decrypting data...")
+        return f"DECRYPTED({super().read_data()})"
+
+class CompressionDecorator(DataSourceDecorator):
+    def write_data(self, data: str) -> None:
+        compressed = f"COMPRESSED({data})"
+        print("Compressing data...")
+        super().write_data(compressed)
+
+    def read_data(self) -> str:
+        print("Decompressing data...")
+        return f"DECOMPRESSED({super().read_data()})"
+
+# Usage: Stack decorators dynamically
+source = CompressionDecorator(
+    EncryptionDecorator(
+        FileDataSource("salaries.dat")
+    )
+)
+
+source.write_data("Name,Salary\nJohn,100000")
+# Output:
+# Compressing data...
+# Encrypting data...
+# Writing to salaries.dat: ENCRYPTED(COMPRESSED(Name,Salary\nJohn,100000))
+
+print(source.read_data())
+# Output:
+# Decompressing data...
+# Decrypting data...
+# DECOMPRESSED(DECRYPTED(Raw data from salaries.dat))
+```
+
 ## Step-by-step explanation
 1. Ensure your core object and all decorators share the same interface.
 2. Create a Base Decorator class that holds a reference to the `Component` interface and delegates all method calls to it.
@@ -168,6 +249,8 @@ public class Main {
 1. **Java I/O Streams:** `new BufferedReader(new InputStreamReader(new FileInputStream("file.txt")))` is the textbook example of the Decorator pattern.
 2. **Web Server Middleware:** Adding logging, authentication, and gzip compression wrappers around an HTTP request handler.
 3. **UI Toolkits:** Adding a scrollbar or a border to a text box component by wrapping it in a `ScrollDecorator` or `BorderDecorator`.
+4. **Python `@functools.wraps`:** Python function decorators are syntactic sugar for wrapping functions with additional behavior (logging, timing, caching via `@lru_cache`).
+5. **Django Middleware:** Each middleware wraps the next one, adding behavior like CSRF protection, session handling, or authentication before/after the view function executes.
 
 ## Pros
 - **Flexibility:** You can extend an object's behavior without creating a new subclass.
@@ -186,9 +269,15 @@ public class Main {
 - **Q: What problem does the Decorator pattern solve?**
   - **A:** It prevents an explosion of subclasses when you need to combine multiple independent behaviors or features on a base object.
 
+- **Q: How does Python's `@decorator` syntax relate to the GoF Decorator pattern?**
+  - **A:** Python's `@decorator` syntax is a language-level feature that wraps functions. The GoF Decorator pattern wraps *objects* via composition. They share the same wrapping concept but operate at different levels — functions vs. objects.
+
 ### Intermediate
 - **Q: How does a Decorator differ from Inheritance?**
   - **A:** Inheritance is static (resolved at compile time) and applies to a whole class. Decorators are dynamic (applied at runtime) and can be attached to individual objects independently of other objects of the same class.
+
+- **Q: Does the order in which you apply decorators matter?**
+  - **A:** Yes, critically. If you apply Encryption then Compression, the data is encrypted first, then compressed. If reversed, it’s compressed first, then encrypted. The output differs and one ordering may be more efficient or secure than the other.
 
 ### Senior
 - **Q: What is the difference between Decorator, Proxy, and Adapter?**
@@ -196,6 +285,16 @@ public class Main {
     - **Adapter:** Changes the *interface* of an object to make it compatible with something else.
     - **Proxy:** Provides the *same* interface but controls *access* to the object (lazy loading, access control).
     - **Decorator:** Provides the *same* interface but adds new *behavior* (compression, encryption).
+
+- **Q: How would you unit-test a heavily decorated object?**
+  - **A:** Test each decorator independently by passing a mock Component. Verify the decorator adds its specific behavior and correctly delegates to the wrappee. Also test the full stack by composing decorators and asserting the combined output.
+
+### Staff Engineer
+- **Q: How does the Decorator pattern enable middleware pipelines in web frameworks like Express.js, Django, or Spring?**
+  - **A:** Each middleware is a decorator that wraps the next handler in the chain. The request flows through each middleware (authentication → logging → rate-limiting → actual handler), with each middleware adding pre/post processing. This is the Decorator pattern at an architectural scale, enabling pluggable, composable request processing.
+
+- **Q: What are the performance implications of deeply stacked decorators?**
+  - **A:** Each decorator adds a method call indirection. With N decorators, every operation traverses N wrapper layers. In hot code paths, this can cause measurable overhead. Mitigation strategies include collapsing decorator chains into a single composite decorator, using bytecode generation (e.g., ASM/Byte Buddy in Java), or caching the decorated result where behavior is idempotent.
 
 ## Common mistakes
 - **Changing the interface:** A decorator must strictly adhere to the Component interface. If it adds new public methods that clients rely on, it's no longer a pure decorator, and you lose the ability to swap them seamlessly.
@@ -216,5 +315,7 @@ The Decorator pattern is a masterclass in "Composition over Inheritance." It all
 
 ## Related topics
 - [Adapter Pattern](../adapter)
-- Proxy Pattern
+- [Facade Pattern](../facade)
 - [Chain of Responsibility](../../behavioral/chain-of-responsibility)
+- [Strategy Pattern](../../behavioral/strategy)
+- [Composition vs Inheritance](../../../03-lld/design-principles/composition-vs-inheritance)

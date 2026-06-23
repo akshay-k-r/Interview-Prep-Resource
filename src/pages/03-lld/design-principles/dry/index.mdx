@@ -1,122 +1,226 @@
 # DRY (Don't Repeat Yourself)
 
 ## Introduction
-DRY (Don't Repeat Yourself) is arguably the most famous and fundamental principle in software engineering. Formulated by Andy Hunt and Dave Thomas in their book *The Pragmatic Programmer*, it is a guiding rule to reduce repetition of information of all kinds.
+DRY (Don't Repeat Yourself) is a fundamental principle in software engineering. Formulated by Andy Hunt and Dave Thomas in *The Pragmatic Programmer*, it guides developers to minimize repetition of information and logic of all kinds across a system.
 
 ## Problem Statement
-Imagine writing a web application that needs to connect to a database. You write the connection string and authentication logic in the `UserController`, the `ProductController`, and the `OrderController`. 
-Six months later, the database password changes. You update it in `UserController` and `ProductController`, but you forget `OrderController`. Suddenly, checkout breaks in production. This is the danger of WET (Write Everything Twice) code.
+Imagine writing an application where user phone numbers are validated, normalized, and saved to a database. You write the regex validation and country-code prefix formatting directly in the `CustomerController`, `DriverController`, and `PartnerController`. When the validation rules change (e.g., supporting international numbers), you must locate and update the logic in all three controllers. Forgetting even one controller introduces bugs and data inconsistencies.
 
 ## Why this exists
-To make code more maintainable, reliable, and readable. When logic is duplicated, maintaining synchronization across all copies becomes an impossible task as a codebase scales. Fixing a bug in one place doesn't fix it everywhere.
+To build maintainable, reliable, and readable software. When business rules or knowledge are duplicated, maintaining sync across all instances becomes difficult as the codebase grows. Fixing a bug or updating a rule in one place fails to propagate to duplicate code paths.
 
 ## Real-world analogy
-Imagine a company's Employee Handbook. If the policy on "Paid Time Off" is written in Chapter 1, Chapter 5, and Chapter 10, updating the policy requires hunting down all three sections. If you miss one, employees get conflicting information. 
-The DRY approach is to put the policy in Chapter 1, and in Chapters 5 and 10, simply write: *"Refer to the PTO policy in Chapter 1."*
+Consider a **company employee handbook**.
+If the company's "Paid Time Off" policy is written out in Chapter 1, Chapter 5, and Chapter 10, updating the policy requires editing all three sections. If you miss one, employees receive conflicting rules. The DRY approach is to write the policy in Chapter 1, and reference it in Chapters 5 and 10 with: *"Refer to the PTO policy in Chapter 1."*
+
+Another analogy is **CSS variables**. Instead of typing `#3b82f6` in 50 different stylesheet rules, you define `--primary-blue: #3b82f6` in one root variable. If your company rebrands, you update the color in one place rather than editing 50 lines of CSS.
 
 ## Definition
-**"Every piece of knowledge must have a single, unambiguous, authoritative representation within a system."**
+The DRY principle states: Every piece of knowledge must have a single, unambiguous, authoritative representation within a system.
+- **Knowledge:** Business logic, algorithms, schemas, or configurations.
+- **Authoritative representation:** A single source of truth that defines the behavior.
 
 ## Key concepts
-- **WET Code:** The opposite of DRY. Stands for "Write Everything Twice" or "We Enjoy Typing."
-- **Rule of Three:** A pragmatic guideline for refactoring. If you write the same code twice, let it be. If you find yourself writing it a *third* time, you must refactor it into a shared function.
-- **Knowledge vs. Text:** DRY isn't just about literally copy-pasting text. It's about duplicating *knowledge* or *business logic*.
+- **WET Code (Write Everything Twice):** The opposite of DRY, leading to copy-pasting of logic.
+- **Rule of Three:** A refactoring guideline stating that writing code twice is acceptable, but writing it a third time requires refactoring it into a shared component.
+- **Duplication of Knowledge vs. Text:** DRY focuses on eliminating duplication of *business rules*, not necessarily identical lines of code that serve different purposes (coincidental duplication).
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    subgraph WET Duplication
+        C1[CustomerController] -->|Regex: ^\d{10}$| V1[Validate & Format]
+        C2[DriverController] -->|Regex: ^\d{10}$| V2[Validate & Format]
+        C3[PartnerController] -->|Regex: ^\d{10}$| V3[Validate & Format]
+    end
+
+    subgraph DRY Refactored
+        C4[CustomerController] -->|Uses| VO[PhoneNumber Value Object]
+        C5[DriverController] -->|Uses| VO
+        C6[PartnerController] -->|Uses| VO
+        VO -->|Single Regex & Normalization| Truth[Authoritative Source]
+    end
+```
 
 ## Python/Java implementation
 
-### Bad Implementation (WET)
-```java
-class ReportGenerator {
-    public void printFinancialReport() {
-        System.out.println("--- HEADER ---");
-        System.out.println("Date: " + LocalDate.now());
-        System.out.println("Generated by: Admin");
-        
-        System.out.println("Financial Data...");
-        
-        System.out.println("--- FOOTER ---");
-    }
+### Bad implementation
+*Raw validation and formatting logic copy-pasted across three separate controller classes. Any changes to validation rules require editing all three files.*
 
-    public void printInventoryReport() {
-        // DUPLICATED KNOWLEDGE!
-        System.out.println("--- HEADER ---");
-        System.out.println("Date: " + LocalDate.now());
-        System.out.println("Generated by: Admin");
-        
-        System.out.println("Inventory Data...");
-        
-        System.out.println("--- FOOTER ---");
+```java
+package bad;
+
+class CustomerController {
+    public void registerCustomer(String name, String rawPhone) {
+        // Validation: Must be 10 digits
+        if (rawPhone == null || !rawPhone.matches("\\d{10}")) {
+            throw new IllegalArgumentException("Invalid phone number format");
+        }
+        String formattedPhone = "+1-" + rawPhone; // Hardcoded US formatting
+        System.out.println("Registering Customer " + name + " with " + formattedPhone);
+    }
+}
+
+class DriverController {
+    public void registerDriver(String name, String rawPhone) {
+        // Duplicated validation logic!
+        if (rawPhone == null || !rawPhone.matches("\\d{10}")) {
+            throw new IllegalArgumentException("Invalid phone number format");
+        }
+        String formattedPhone = "+1-" + rawPhone;
+        System.out.println("Registering Driver " + name + " with " + formattedPhone);
     }
 }
 ```
 
-### Better Implementation (DRY)
+### Better implementation
+*Extracting the validation and formatting logic into static methods in a utility helper class. While this reduces repetition, it still exposes raw string variables, failing to prevent invalid string data from being passed elsewhere in the system.*
+
 ```java
-class ReportGenerator {
-    
-    // The authoritative representation of a Header
-    private void printHeader() {
-        System.out.println("--- HEADER ---");
-        System.out.println("Date: " + LocalDate.now());
-        System.out.println("Generated by: Admin");
+package better;
+
+class PhoneUtils {
+    public static boolean isValid(String phone) {
+        return phone != null && phone.matches("\\d{10}");
     }
 
-    // The authoritative representation of a Footer
-    private void printFooter() {
-        System.out.println("--- FOOTER ---");
+    public static String formatUS(String phone) {
+        return "+1-" + phone;
     }
+}
 
-    public void printFinancialReport() {
-        printHeader();
-        System.out.println("Financial Data...");
-        printFooter();
-    }
-
-    public void printInventoryReport() {
-        printHeader();
-        System.out.println("Inventory Data...");
-        printFooter();
+class CustomerController {
+    public void registerCustomer(String name, String rawPhone) {
+        if (!PhoneUtils.isValid(rawPhone)) {
+            throw new IllegalArgumentException("Invalid phone number");
+        }
+        String formatted = PhoneUtils.formatUS(rawPhone);
+        System.out.println("Registering Customer " + name + " with " + formatted);
     }
 }
 ```
+
+### Best implementation
+*Encapsulating the logic into a reusable `PhoneNumber` Value Object. The object validates its state upon construction, ensuring that only valid, normalized phone number objects can exist in the domain.*
+
+```java
+package best;
+
+import java.util.Objects;
+
+// 1. Authoritative Value Object representing a Phone Number
+public final class PhoneNumber {
+    private final String formattedNumber;
+
+    public PhoneNumber(String rawNumber) {
+        Objects.requireNonNull(rawNumber, "Phone number cannot be null");
+        String sanitized = rawNumber.replaceAll("\\D", ""); // Remove non-digits
+        
+        if (!sanitized.matches("\\d{10}")) {
+            throw new IllegalArgumentException("Phone number must contain exactly 10 digits");
+        }
+        
+        // Encapsulate formatting logic
+        this.formattedNumber = "+1-" + sanitized;
+    }
+
+    public String getFormattedNumber() {
+        return formattedNumber;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PhoneNumber that = (PhoneNumber) o;
+        return Objects.equals(formattedNumber, that.formattedNumber);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(formattedNumber);
+    }
+}
+
+// 2. DRY Client classes: depend entirely on the Value Object contract
+class CustomerController {
+    public void registerCustomer(String name, PhoneNumber phone) {
+        // Guaranteed to be valid and formatted! No validation logic duplicated here.
+        System.out.println("Registering Customer " + name + " with " + phone.getFormattedNumber());
+    }
+}
+
+class DriverController {
+    public void registerDriver(String name, PhoneNumber phone) {
+        System.out.println("Registering Driver " + name + " with " + phone.getFormattedNumber());
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Identify Duplication of Knowledge:** We analyze the bad design and find that the regex validation `\\d{10}` and prefix `+1-` are repeated across multiple controllers.
+2. **Extract to Value Object:** We create the `PhoneNumber` class. The constructor sanitizes, validates, and formats the input, serving as the single source of truth for phone numbers.
+3. **Refactor Client Signatures:** We update the controllers to accept the `PhoneNumber` type instead of a raw `String`. This ensures that only valid, pre-formatted phone numbers can be processed by the application.
 
 ## Multiple real-world examples
-1. **Magic Strings/Numbers:** Using the string `"https://api.stripe.com/v1/"` in 10 different files. DRY principle dictates putting this in a central `Config` file or a constant `STRIPE_API_BASE_URL`.
-2. **Database Schemas vs Models:** If your database schema defines a `VARCHAR(50)` for a username, and your Java code has validation `if (username.length() > 50)`, that knowledge is duplicated. If the DB changes to `100`, the Java code breaks. Advanced ORMs use the DB schema as the single source of truth to avoid this DRY violation.
-3. **CSS Variables:** Instead of writing `color: #3b82f6;` across 50 different CSS classes, you define a variable `--primary-blue: #3b82f6;` and use it. If the brand color changes, you change it in one place.
+- **Database Schema Validation:** Modern ORMs (like Hibernate) generate database columns based on annotations in Java entities, ensuring the schema definition exists in only one place.
+- **REST Client Configurations:** An application uses a central configuration file to store API base URLs (e.g., `https://api.stripe.com/v1/`), preventing developers from hardcoding the URL across different API client classes.
+- **Application Error Constants:** Using an enum or property file (e.g., `ErrorCodes.USER_NOT_FOUND`) to store error messages, ensuring standard messaging across the application.
 
 ## Pros
-- **Maintainability:** Fix a bug once, and it's fixed everywhere. Update a requirement once, and it propagates globally.
-- **Readability:** Extracting duplicated code into well-named functions makes the high-level logic easier to read.
-- **Reduces Cognitive Load:** You don't have to remember "every place where the tax calculation is done."
+- **Simplified Maintenance:** Updating a business rule requires editing only one class, and the changes propagate globally.
+- **Consistent Data:** Validations are enforced uniformly, reducing data corruption.
+- **Cleaner APIs:** Reusable objects and methods replace duplicate boilerplates, making the codebase easier to read.
 
 ## Cons
-- **Premature Abstraction:** This is the biggest risk of DRY. Sometimes two pieces of code *look* identical right now, but they represent entirely different business concepts that will evolve differently (e.g., a User's ID validation and a Product's ID validation both currently checking for `length == 10`). Forcing them into a shared `validateId()` function couples two unrelated concepts. When the User ID rules change later, you break the Product logic.
+- **Risk of Premature Abstraction:** Developers can over-engineer code by abstracting identical logic that just happens to be duplicate by coincidence, introducing unnecessary coupling.
 
 ## Interview questions
 
 ### Beginner
-- **Q: What does DRY stand for?**
-  - **A:** Don't Repeat Yourself.
+- **Q: What is the DRY principle?**
+- **A:** DRY stands for Don't Repeat Yourself. It states that every piece of system knowledge should have a single, unambiguous representation within the codebase.
 
 ### Intermediate
-- **Q: What is the "Rule of Three"?**
-  - **A:** It's a heuristic for knowing when to apply DRY. Writing code twice is acceptable (sometimes abstraction adds too much complexity). Writing it three times is the trigger to refactor it into a shared function.
+- **Q: What is the difference between coincidental duplication and functional duplication?**
+- **A:**
+  - **Coincidental Duplication:** Two code segments look identical but serve different business concepts (e.g., validating a User ID and a Product ID both happen to require 10 digits).
+  - **Functional Duplication:** Two code segments represent the exact same business rule (e.g., checking a tax rate). DRY should only be applied to functional duplication; abstracting coincidental duplication couples unrelated concepts together.
 
 ### Senior
-- **Q: Give an example of when violating DRY is actually the correct architectural choice.**
-  - **A:** Microservices. In a microservices architecture, you intentionally accept data and code duplication (violating DRY) to achieve strict decoupling. Sharing a `User` class library across 10 microservices creates a tight coupling that defeats the purpose of microservices. It is better for each service to maintain its own slightly duplicated version of the User model.
+- **Q: What is premature abstraction, and how does it relate to the DRY principle?**
+- **A:** Premature abstraction occurs when a developer abstracts code to satisfy DRY before understanding the domain's long-term behavior. This leads to complex, parameterized shared methods with many boolean flags. It is often better to duplicate code temporarily (Write Everything Twice) until patterns emerge.
+
+### Staff Engineer
+- **Q: How do you balance the DRY principle with the requirement for service independence in Microservices architectures?**
+- **A:** In Microservices, team and service independence takes precedence over the DRY principle:
+  1. **Accept Local Duplication:** Avoid creating shared utility libraries (like `common-utils.jar`) containing domain models or logic shared across multiple microservices. This couples the services together, causing updates to one model to break other services.
+  2. **Isolate Domain Models:** Each microservice should define and maintain its own domain models, even if they look similar to models in other services.
+  3. **Duplicate Infrastructure Details:** Duplicating simple setups (like helper classes or basic configurations) is preferred to preserve decoupling.
 
 ## Common mistakes
-- **Coupling coincidental duplication:** Extracting identical code that just happens to be identical by coincidence, rather than because they represent the same underlying knowledge. (See "Premature Abstraction" above).
+- **Abstracting coincidental duplication:** Merging two similar code paths that serve different business requirements.
+- **Using boolean flags to force reuse:** Writing a massive, complex shared function with multiple flags to handle slightly different use cases, making the code hard to read.
 
 ## Best practices
-- Apply DRY to *business logic* and *knowledge*, not necessarily every single line of identical syntax.
-- If abstracting duplicated code makes the code harder to read or requires passing 8 different boolean flags into a master function, it's better to leave it WET. (AHA: Avoid Hasty Abstractions).
+- Apply DRY to *business rules* rather than identical lines of syntax.
+- Follow the "Rule of Three" before abstracting duplicate code.
+- Keep shared classes small and focused on a single responsibility.
+
+## When NOT to use
+- **Decoupled Systems (Microservices):** Avoid sharing domain libraries across microservices to maintain service independence.
+- **Test Code:** Test scripts should prioritize readability over strict DRY adherence; using complex helper abstractions can make tests hard to follow.
+
+## Comparison with similar concepts
+- **DRY vs AHA (Avoid Hasty Abstractions):**
+  - **DRY:** Recommends abstracting duplicated knowledge to prevent bugs.
+  - **AHA:** Cautions against abstracting code too early, preferring duplication over the wrong abstraction.
 
 ## Summary
-DRY is the cornerstone of maintainable software. By ensuring that every piece of system knowledge exists in only one authoritative place, developers protect themselves from the cascading bugs and maintenance nightmares that plague heavily duplicated codebases.
+The DRY principle ensures that each business rule resides in only one place. Encapsulating logic inside domain objects and helper components prevents data inconsistencies and makes code easier to maintain.
 
 ## Related topics
 - [KISS (Keep It Simple, Stupid)](../kiss)
 - [YAGNI (You Aren't Gonna Need It)](../yagni)
+- [SOLID Principles](../../solid-principles)

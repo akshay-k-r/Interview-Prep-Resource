@@ -168,6 +168,98 @@ public class Main {
 }
 ```
 
+## Python implementation
+
+### Bad implementation (Telescoping arguments)
+Using positional arguments with defaults is messy and error-prone.
+
+```python
+class User:
+    def __init__(self, first_name, last_name, age=0, phone="", address=""):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.age = age
+        self.phone = phone
+        self.address = address
+
+# Confusing: What does 0 and "" mean here? Which is phone, which is address?
+user = User("John", "Doe", 0, "", "")
+```
+
+### Better implementation (Keyword arguments)
+Python's keyword arguments are a natural improvement, but there's no validation or immutability.
+
+```python
+class User:
+    def __init__(self, first_name: str, last_name: str, **kwargs):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.age = kwargs.get("age", 0)
+        self.phone = kwargs.get("phone", "")
+        self.address = kwargs.get("address", "")
+
+# Readable, but no type checking and no immutability
+user = User("John", "Doe", age=30, phone="123-456-7890")
+```
+
+### Best implementation (Fluent Builder with validation)
+A true Builder with method chaining, validation in `build()`, and immutability via `__slots__` or `@dataclass(frozen=True)`.
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)  # Immutable once created
+class User:
+    first_name: str
+    last_name: str
+    age: int = 0
+    phone: str = ""
+    address: str = ""
+
+class UserBuilder:
+    def __init__(self, first_name: str, last_name: str):
+        self._first_name = first_name
+        self._last_name = last_name
+        self._age = 0
+        self._phone = ""
+        self._address = ""
+
+    def age(self, age: int) -> "UserBuilder":
+        self._age = age
+        return self
+
+    def phone(self, phone: str) -> "UserBuilder":
+        self._phone = phone
+        return self
+
+    def address(self, address: str) -> "UserBuilder":
+        self._address = address
+        return self
+
+    def build(self) -> User:
+        # Validation before construction
+        if not self._first_name or not self._last_name:
+            raise ValueError("First and last name are required.")
+        if self._age < 0:
+            raise ValueError("Age cannot be negative.")
+        return User(
+            first_name=self._first_name,
+            last_name=self._last_name,
+            age=self._age,
+            phone=self._phone,
+            address=self._address,
+        )
+
+# Client code — highly readable, fluent, and results in an immutable object
+user = (UserBuilder("John", "Doe")
+        .age(30)
+        .phone("123-456-7890")
+        .build())
+
+print(user)  # User(first_name='John', last_name='Doe', age=30, ...)
+# user.age = 31  # Raises FrozenInstanceError!
+```
+
 ## Step-by-step explanation
 1. Clearly define the complex `Product` class. Ideally, make its fields `final` to ensure immutability once built.
 2. Make the constructor of the `Product` private so it can only be initialized via the Builder.
@@ -181,6 +273,7 @@ public class Main {
 2. **SQL Query Builders:** Libraries like JOOQ or Hibernate `CriteriaBuilder` let you construct complex SQL queries sequentially (`.select().from().where().orderBy()`).
 3. **Testing Data Generation:** Building complex Mock objects in unit tests where only 1 or 2 fields vary from the defaults.
 4. **HTTP Client Requests:** The `java.net.http.HttpRequest.newBuilder()` API uses builders to attach URIs, headers, and body payloads sequentially.
+5. **Protobuf Message Construction:** Google Protocol Buffers use the Builder pattern extensively — `Person.newBuilder().setName("Alice").setId(123).build()` is the standard API.
 
 ## Pros
 - **Readability:** Eliminates telescoping constructors. Code reads like natural language.
@@ -197,17 +290,29 @@ public class Main {
 - **Q: What is a "telescoping constructor" and how does the Builder solve it?**
 - A: A telescoping constructor happens when a class has multiple constructor overloads, each taking one more parameter than the last. The Builder solves this by extracting optional parameters into chainable setter methods.
 
+- **Q: What is the key benefit of using a Builder over a simple constructor with default parameters?**
+- A: Builders enforce a clear, readable construction API with method names that self-document what each value represents. They also enable validation in `build()` before the object is created, and can enforce immutability.
+
 ### Intermediate
 - **Q: What is the difference between a Factory and a Builder?**
 - A: A Factory creates an object in a single step (usually returning an interface). A Builder constructs a complex object step-by-step and returns the concrete product.
+
+- **Q: How does the Builder pattern work with the Prototype pattern?**
+- A: You can use a Builder to construct a complex initial prototype, then use the Prototype's `clone()` to create copies with minor variations. This is common in game development where a `MonsterBuilder` creates the initial template, and prototyping creates the spawned instances.
 
 ### Senior
 - **Q: How does the Builder pattern enhance thread safety?**
 - A: By using a Builder, you can define all fields in the final Product as `final`. The builder handles the mutable state during construction, and once `build()` is called, the final object is 100% immutable and inherently thread-safe.
 
+- **Q: How would you implement Builder validation that catches errors at compile time rather than runtime?**
+- A: Use a "Step Builder" (or "Wizard Builder") pattern where each setter method returns a *different* interface, enforcing a specific order of method calls. For example, `setName()` returns `HasName` which only has `setAge()`, which returns `HasAge` which only has `build()`. This prevents calling `build()` before required fields are set.
+
 ### Staff Engineer
 - **Q: Explain the role of the "Director" in the GoF Builder pattern. Why is it rarely used in modern Java?**
 - A: The GoF Director orchestrates the steps of the Builder to construct predefined configurations (e.g., `buildEconomyCar()`, `buildLuxuryCar()`). Modern development heavily favors the Joshua Bloch (Effective Java) style inner-class builder with fluent APIs. Instead of a dedicated Director class, developers usually rely on simple Factory methods or preset variables to achieve predefined configurations, rendering a formal Director overly verbose.
+
+- **Q: In a microservices context, how would you use a Builder for constructing complex API request/response DTOs that need to be backwards-compatible?**
+- A: Builders are ideal for DTOs that evolve over time. New fields get new builder methods with sensible defaults, so older clients that don't call the new methods still produce valid objects. This is exactly how Protobuf and gRPC handle schema evolution — the Builder pattern with defaulting ensures backward compatibility without breaking existing consumers.
 
 ## Common mistakes
 - **Using Builders for everything:** If a class only has 2 or 3 parameters, a standard constructor or static factory method is much simpler.
@@ -229,5 +334,8 @@ public class Main {
 The Builder pattern is the ultimate solution for instantiating complex objects with many optional parameters. While historically reliant on a formal `Director` class, modern programming favors the fluent, static-inner-class approach. It significantly boosts code readability and allows for strict immutability.
 
 ## Related topics
-- Factory Method
-- Abstract Factory
+- [Factory Method](../factory)
+- [Abstract Factory](../abstract-factory)
+- [Singleton](../singleton)
+- [Prototype](../prototype)
+- [Composition vs Inheritance](../../../03-lld/design-principles/composition-vs-inheritance)

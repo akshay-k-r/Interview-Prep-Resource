@@ -133,6 +133,67 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. Mediator Interface
+class Mediator(ABC):
+    @abstractmethod
+    def notify(self, sender: "Component", event: str) -> None:
+        pass
+
+
+# 2. Base Component
+class Component:
+    def __init__(self) -> None:
+        self._mediator: Mediator | None = None
+
+    def set_mediator(self, mediator: Mediator) -> None:
+        self._mediator = mediator
+
+
+# 3. Concrete Components
+class Button(Component):
+    def click(self) -> None:
+        print("Button clicked.")
+        if self._mediator:
+            self._mediator.notify(self, "click")
+
+
+class TextBox(Component):
+    def disable(self) -> None:
+        print("TextBox is disabled.")
+
+
+# 4. Concrete Mediator
+class DialogMediator(Mediator):
+    def __init__(self, button: Button, text_box: TextBox) -> None:
+        self._button = button
+        self._button.set_mediator(self)
+
+        self._text_box = text_box
+        self._text_box.set_mediator(self)
+
+    def notify(self, sender: Component, event: str) -> None:
+        # Handle events centrally
+        if sender is self._button and event == "click":
+            print("Mediator reacts on Button click and triggers TextBox.")
+            self._text_box.disable()
+
+
+# 5. Usage
+if __name__ == "__main__":
+    btn = Button()
+    txt = TextBox()
+
+    # Create mediator coordinating button and text box
+    dialog = DialogMediator(btn, txt)
+
+    print("Client clicks the button...")
+    btn.click()
+```
+
 ## Step-by-step explanation
 1. Identify a group of tightly coupled classes that would benefit from being independent.
 2. Declare the Mediator interface and describe the desired communication protocol.
@@ -144,6 +205,8 @@ public class Main {
 1. **GUI Dialogs:** A login dialog where checking "Remember Me" enables a specific field.
 2. **Chat Applications:** Users don't send direct IP packets to other users; they send messages to a Chat Server (Mediator), which routes them to the correct recipients.
 3. **Enterprise Service Bus (ESB):** In microservices, an ESB acts as a mediator routing messages between disparate services that don't know about each other.
+4. **Air Traffic Control (ATC):** Airplanes landing or taking off coordinate only with the ATC tower instead of talking to each other.
+5. **Asynchronous Execution Loops:** Task schedulers (like Python's `asyncio` or Node's event loop) act as mediators coordinating job executions between asynchronous tasks and CPU core resources.
 
 ## Pros
 - **Single Responsibility Principle:** You can extract the communications between various components into a single place, making it easier to comprehend and maintain.
@@ -158,14 +221,28 @@ public class Main {
 ### Beginner
 - **Q: What is the primary purpose of the Mediator pattern?**
   - **A:** To reduce tight coupling between classes by forcing them to communicate through a central mediator object rather than directly with each other.
+- **Q: How does Mediator improve component reusability?**
+  - **A:** Components no longer have references to other specific components. Because they are decoupled, you can easily reuse a component class (like a generic button) in a completely different UI context.
 
 ### Intermediate
 - **Q: How does the Mediator pattern differ from the Facade pattern?**
   - **A:** Facade defines a simplified interface to a subsystem of objects; the subsystem objects are not aware of the facade. Mediator centralizes communication between objects; the objects *are* aware of the mediator and communicate with it instead of each other.
+- **Q: Can we implement a Mediator using the Observer pattern? What are the benefits?**
+  - **A:** Yes. Instead of components explicitly calling a method on the mediator, they trigger an event. The mediator (acting as an observer) listens to these events and reacts by updating other components. This further decouples the components from the specific mediator interface.
 
 ### Senior
 - **Q: How does the Mediator pattern differ from the Observer pattern?**
   - **A:** In Observer, Publishers and Subscribers are completely unaware of each other and communicate via a dynamic event subscription mechanism. In Mediator, components are aware of the central Mediator, and the Mediator contains the hardcoded routing logic. They are often used together: the Mediator can act as a Publisher that Components subscribe to.
+- **Q: What is the "God Object" anti-pattern in the context of a Mediator, and how do you prevent it?**
+  - **A:** As more components are added, the Mediator's notification methods can expand into massive conditional blocks that know every single detail about every colleague. To prevent this:
+    1. Keep the Mediator strictly focused on routing/coordination, leaving business logic inside the components.
+    2. Divide the system into smaller, nested mediators instead of having one huge global mediator.
+
+### Staff Engineer
+- **Q: In event-driven microservices, how does an Event Broker (like Kafka or RabbitMQ) act as a distributed Mediator?**
+  - **A:** Rather than microservices communicating with each other directly via HTTP/gRPC (resulting in a complex mesh of dependencies), they publish and consume events from a centralized broker. The broker acts as a distributed mediator coordinating message routing, queuing, and broadcasting, which isolates services and simplifies service topologies.
+- **Q: How does the Mediator pattern apply to modern frontend state management libraries (like Redux)?**
+  - **A:** In Redux, components do not update each other directly. Instead, they dispatch **Actions** representing events. The central **Store** (acting as the Mediator) receives these actions, processes them through **Reducers**, updates the state, and notifies the interested components. This keeps UI views completely decoupled from state updates.
 
 ## Common mistakes
 - Allowing the Mediator to handle business logic. The Mediator should strictly handle *routing and coordination*, while the components should handle the actual business rules.

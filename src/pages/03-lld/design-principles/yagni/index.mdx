@@ -1,91 +1,213 @@
 # YAGNI (You Aren't Gonna Need It)
 
 ## Introduction
-YAGNI (You Aren't Gonna Need It) is a principle from Extreme Programming (XP) that states a programmer should not add functionality until deemed necessary. 
+YAGNI (You Aren't Gonna Need It) is a design principle originating from Extreme Programming (XP). It advises software developers that they should not add functionality or write code based on anticipated future requirements until those requirements are explicitly requested.
 
 ## Problem Statement
-Developers are notorious for trying to predict the future. While building a simple user login system, a developer might think: *"Eventually, we'll probably need to support OAuth, SAML, Biometric login, and 2FA. I should build the database architecture and interfaces to support all of that right now."*
-- **Result:** The developer spends 3 weeks building a massively complex authentication system instead of 3 days. 
-- **The Reality:** The startup pivots, they only ever need basic email login, and the developer just wasted 3 weeks building and maintaining "ghost code" that will never be executed.
+Developers frequently engage in speculative design. While building a basic feature (e.g., saving a user record), a developer might assume: *"Eventually, we will need to support soft-deletes, multi-tenancy, custom fields, and generic query pagination. I should write interfaces and generic repository classes to support all of this right now."* This leads to weeks of over-engineering, resulting in unused, complex code that must be compiled, tested, and maintained.
 
 ## Why this exists
-To prevent wasted time, reduce codebase bloat, and maintain agility. Code is a liability, not an asset. Every line of code you write must be tested, maintained, and read by future developers. Writing code for future "maybes" slows the entire team down today.
+To optimize development speed, reduce codebase bloat, and maintain agility. Code is a liability, not an asset. Every line of code written must be understood, tested, and refactored by future developers. Writing speculative code today wastes time and slows the team down.
 
 ## Real-world analogy
-Imagine packing for a weekend trip to a sunny beach. 
-- **Following YAGNI:** You pack a swimsuit, t-shirts, and sunscreen.
-- **Violating YAGNI:** You think, *"What if it snows? What if I get invited to a formal gala? What if I need to chop wood?"* You pack a winter parka, a tuxedo, and an axe. You now have to lug around a 100lb suitcase for a weekend beach trip.
+Consider packing for a **weekend beach trip**.
+- **Following YAGNI:** You pack a swimsuit, a couple of t-shirts, and sunscreen.
+- **Violating YAGNI:** You think, *"What if it snows? What if I get invited to a formal gala? What if I need to chop firewood?"* You pack a heavy winter coat, a tuxedo, and an axe. You now have to drag a 100-pound suitcase around for a weekend beach trip.
+
+Another analogy is a **family home extension**. If you build a five-story foundation and install plumbing lines for four extra bathrooms "just in case" you have guests in ten years, you spend money and effort maintaining pipes that remain dry and unused, rather than focusing on completing the primary living spaces.
 
 ## Definition
-**"Always implement things when you actually need them, never when you just foresee that you need them."** — Ron Jeffries
+The YAGNI principle states: Always implement features when you actually need them, never when you merely foresee that you might need them.
+- **Extend when needed:** Add code only when a specific requirement is scheduled for development.
+- **Avoid Speculation:** Do not write boilerplate or structures for hypothetical future features.
 
 ## Key concepts
-- **Speculative Design:** The anti-pattern of writing code based on assumptions of future requirements.
-- **Lean Software Development:** YAGNI aligns perfectly with Lean/Agile philosophies: deliver exactly what the customer needs right now, get feedback, and iterate.
+- **Speculative Design:** The practice of writing code or adding interfaces based on assumptions of future requirements.
+- **Dead Code:** Unused classes, methods, or configurations that remain in the codebase.
+- **Refactorability:** The ease with which simple, clean code can be modified in the future when new requirements arise.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    subgraph Speculative Design Violation
+        Store[UserRepository] -->|Implements| Gen[GenericRepository]
+        Gen -->|Provides| CRUD[create, read, update, delete]
+        Gen -->|Provides| SD[softDelete]
+        Gen -->|Provides| MT[multiTenantContext]
+        Gen -->|Provides| Pag[paginateWithCustomFilters]
+        style SD stroke-dasharray: 5 5
+        style MT stroke-dasharray: 5 5
+        style Pag stroke-dasharray: 5 5
+    end
+
+    subgraph YAGNI Compliant Design
+        Store2[UserRepository] -->|Only provides| Save[saveUser]
+    end
+```
 
 ## Python/Java implementation
 
-### Bad Implementation (Violating YAGNI)
+### Bad implementation
+*A developer creating a generic query layer, soft-delete flags, multi-tenancy checks, and audit logging features "just in case" they are needed, complicating a simple database save.*
+
 ```java
-// We only need to export to CSV right now.
-// But the developer thinks "We'll definitely need PDF and Excel eventually!"
-interface ReportExporter {
-    void exportCsv();
-    void exportPdf();    // Throws NotImplementedException for the next 3 years
-    void exportExcel();  // Throws NotImplementedException for the next 3 years
-    void exportXml();    // Throws NotImplementedException for the next 3 years
+package bad;
+
+import java.util.List;
+import java.util.Map;
+
+// A generic repository with speculative features that are not yet needed
+interface Repository<T> {
+    void save(T entity);
+    void softDelete(String id); // Not requested
+    List<T> findAllPaginated(int page, int size, Map<String, Object> filters); // Not requested
+    void enableMultiTenancy(String tenantId); // Not requested
+}
+
+class User {
+    private String id;
+    private String username;
+    // Getters and setters...
+}
+
+class UserRepository implements Repository<User> {
+    @Override
+    public void save(User entity) {
+        System.out.println("Saving User to database");
+    }
+
+    @Override
+    public void softDelete(String id) {
+        // Speculative: throwing exception as there is no business logic yet
+        throw new UnsupportedOperationException("Soft delete not yet implemented");
+    }
+
+    @Override
+    public List<User> findAllPaginated(int page, int size, Map<String, Object> filters) {
+        throw new UnsupportedOperationException("Pagination not yet implemented");
+    }
+
+    @Override
+    public void enableMultiTenancy(String tenantId) {
+        throw new UnsupportedOperationException("Multi-tenancy not yet implemented");
+    }
 }
 ```
 
-### Better Implementation (Following YAGNI)
+### Better implementation
+*Creating interfaces and abstract base repositories to allow future extensions, but leaving them empty of unimplemented methods to reduce bloat.*
+
 ```java
-// Just build what is requested today.
-interface ReportExporter {
-    void exportCsv();
+package better;
+
+interface UserRepository {
+    void save(User user);
 }
 
-// When the business actually asks for PDF 6 months from now, 
-// THAT is when you add the exportPdf() method.
+class User {
+    private String username;
+    public User(String username) { this.username = username; }
+    public String getUsername() { return username; }
+}
+
+class SqlUserRepository implements UserRepository {
+    @Override
+    public void save(User user) {
+        System.out.println("Saving " + user.getUsername() + " to SQL");
+    }
+}
 ```
+
+### Best implementation
+*A simple, concrete class containing only the required `saveUser` method. No interfaces, no base classes, and no speculative methods. If extensions are needed later, they are refactored into the code when requested.*
+
+```java
+package best;
+
+class User {
+    private final String username;
+
+    public User(String username) {
+        this.username = username;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+}
+
+// YAGNI: A simple, concrete repository. Only contains what is needed today.
+public class UserRepository {
+    public void save(User user) {
+        System.out.println("Saving user to DB: " + user.getUsername());
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Analyze Today's Requirements:** The only requirement is to save a user record to the database.
+2. **Write Only the Core Logic:** We write a concrete `UserRepository` class with a single `save` method, avoiding interfaces and generic class parameters.
+3. **Defer Abstractions:** We do not create base interfaces or abstract factories until we have at least two concrete repository implementations (e.g., `MongoUserRepository` and `SqlUserRepository`) that require polymorphism.
 
 ## Multiple real-world examples
-1. **Database Columns:** Adding `phone_number_2`, `fax_number`, and `pager_number` to a database schema just in case, when the business only asked for `email`.
-2. **Over-abstracting:** Creating a complex `AbstractRepositoryFactoryProvider` hierarchy because you "might switch databases someday," when a simple direct database connection is fine for the MVP.
-3. **Third-party Libraries:** Importing a massive 50MB charting library into your frontend app just to draw a single bar chart, because "we might need complex scatter plots later."
+- **Database Schema Fields:** Storing only required contact fields (like `email`) instead of speculatively adding fields for `pager_number` or `fax_number`.
+- **Framework Adoption:** Using a simple local scheduler rather than setting up an enterprise orchestration engine like Kubernetes for a basic application.
+- **REST Endpoints:** Exposing only the specific endpoints required by the frontend client rather than building full CRUD endpoints upfront.
 
 ## Pros
-- **Speed to Market:** You deliver working features much faster because you aren't building unused infrastructure.
-- **Cleaner Codebase:** No "dead code" or confusing abstract methods that are never actually called.
-- **Flexibility:** When the "future" actually arrives, the requirements are almost always different than what you predicted. By waiting, you build exactly what is needed based on real facts, not guesses.
+- **Faster Delivery:** Saves time by avoiding the development and testing of unused features.
+- **Cleaner Codebase:** Eliminates dead code, empty method stubs, and unused abstractions.
+- **Fact-Based Design:** When a feature is eventually requested, developers can design it based on actual requirements rather than speculative guesses.
 
 ## Cons
-- **Technical Debt:** The main argument against YAGNI is that if you don't design for the future, you'll have to rewrite everything later. (However, modern Agile advocates argue that refactoring simple code later is still cheaper than maintaining complex, unused code now).
-- **Extremism:** Taking YAGNI to the extreme means writing terrible, hard-coded scripts. YAGNI does *not* mean writing bad code; it means writing clean, well-structured code for *today's* requirements.
+- **Refactoring Effort:** If a simple design must be extended later, it may require refactoring class structures and interfaces. (Agile methodologies accept this trade-off, as refactoring clean code is generally cheaper than maintaining unused code).
 
 ## Interview questions
 
 ### Beginner
-- **Q: What does YAGNI stand for?**
-  - **A:** You Aren't Gonna Need It.
+- **Q: What is the YAGNI principle?**
+- **A:** YAGNI stands for You Aren't Gonna Need It. It advises developers against writing code or adding abstractions for future features until those features are explicitly requested.
 
 ### Intermediate
-- **Q: How is YAGNI different from KISS?**
-  - **A:** KISS is about *how* you write the code (make it simple, not complex). YAGNI is about *whether* you write the code at all (don't build features until they are requested).
+- **Q: How does YAGNI differ from the Open/Closed Principle (OCP)?**
+- **A:**
+  - **OCP:** Guides you to write code that can be extended without modifying existing source files.
+  - **YAGNI:** Advises against writing the actual extension code or abstract layers until they are needed.
+  - **Balance:** Design your architecture to be modular and clean so that it *can* be extended (OCP), but do not write the abstract interfaces or classes until the requirement arises (YAGNI).
 
 ### Senior
-- **Q: Does YAGNI conflict with the Open/Closed Principle (OCP)?**
-  - **A:** They can seem to. OCP says to design for future extension. YAGNI says don't build for the future. The balance is: design your architecture cleanly so that it *can* be extended (OCP), but do not actually write the extensions or complex interfaces until the specific business requirement arrives (YAGNI).
+- **Q: How does YAGNI prevent the "Fragile Base Class" problem?**
+- **A:** Speculatively adding features to a base class can introduce bugs that affect all subclasses. By applying YAGNI and keeping base classes focused only on active requirements, developers minimize complexity and reduce regression risks in inherited classes.
+
+### Staff Engineer
+- **Q: How do you address concerns that adhering to YAGNI causes technical debt when requirements scale?**
+- **A:** Address these concerns by clarifying the relationship between YAGNI and clean code:
+  1. **YAGNI is not "Quick and Dirty":** Adhering to YAGNI means writing simple, well-structured, and fully tested code for *today's* requirements. It does not justify cutting corners or neglecting test coverage.
+  2. **Refactoring is Cheaper than Speculation:** Maintaining unused complex code over years adds constant cognitive load. In contrast, refactoring simple, clean code when requirements change is a structured, low-risk process.
+  3. **Guiding Principle:** Focus on write-time simplicity. If a feature can be added in less than a day, do not build abstractions to support it today.
 
 ## Common mistakes
-- **"But what if..." Syndrome:** Justifying complex code during code reviews based entirely on hypothetical future scenarios that aren't on the product roadmap.
+- **Writing ghost features:** Adding utility methods or classes that are never executed in production.
+- **Conflating YAGNI with poor design:** Writing messy, hardcoded code under the guise of keeping things simple, which makes future refactoring difficult.
 
 ## Best practices
-- If a product manager doesn't ask for it, don't build it.
-- Trust in your ability (and your test suite's ability) to refactor the code easily in the future when the new requirement actually arrives.
+- Focus on delivering only the features scheduled for the current development cycle.
+- Keep codebase boundaries clean to make future refactoring easy.
+- Write thorough unit tests so you can refactor simple structures safely when requirements change.
+
+## When NOT to use
+- **Hardware/Protocol Standards:** When building systems that must conform to fixed hardware specifications or communication protocols, designing for future standards is necessary.
+
+## Comparison with similar concepts
+- **YAGNI vs Premature Optimization:**
+  - **YAGNI:** Focuses on avoiding unnecessary *features* and abstractions.
+  - **Premature Optimization:** Focuses on avoiding performance modifications before measuring real bottlenecks.
 
 ## Summary
-YAGNI forces developers to be ruthlessly pragmatic. By avoiding speculative engineering, teams keep their codebases lean, their development cycles fast, and their focus entirely on delivering immediate value to the user.
+The YAGNI principle prevents software bloat by advising against writing code for anticipated future requirements. Building only what is needed today keeps codebases lean and maintainable.
 
 ## Related topics
 - [KISS (Keep It Simple, Stupid)](../kiss)
 - [DRY (Don't Repeat Yourself)](../dry)
+- [SOLID Principles](../../solid-principles)

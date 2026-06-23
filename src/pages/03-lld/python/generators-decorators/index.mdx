@@ -1,0 +1,261 @@
+# Generators & Decorators
+
+## Introduction
+Python's **Generators** and **Decorators** are powerful features for writing clean, memory-efficient, and maintainable code. Generators allow you to stream data lazily using the iterator protocol, while decorators provide a way to modify the behavior of functions or classes dynamically without altering their source code.
+
+---
+
+## Problem Statement
+When processing large datasets (e.g., millions of database rows or gigabytes of log files), loading all data into memory at once can exhaust system resources and cause application crashes. Additionally, adding cross-cutting concerns (like logging, authentication, or caching) directly to multiple functions duplicates code, making it difficult to maintain. We need mechanisms for lazy data streaming and clean code separation.
+
+---
+
+## Why this exists
+- **Generators (Memory Efficiency):** Bypasses the need to allocate memory for large lists. By yielding values one-by-one, generators maintain a tiny memory footprint regardless of dataset size.
+- **Decorators (Dry Code):** Enforces the Open/Closed Principle. Decorators allow developers to wrap common logic (e.g. timing execution or validating permissions) around functions cleanly, separating concerns.
+
+---
+
+## Real-world analogy
+- **Generator:** Think of a water faucet. When you turn it on, water flows out drop-by-drop (lazy evaluation). You only consume the water you need, and the faucet does not require a giant water tank inside your kitchen to work.
+- **Decorator:** Think of a security guard standing at a building entrance. Instead of teaching every employee how to check ID badges, you place a guard at the door. The guard wraps the entrance process, validating visitors before letting them proceed.
+
+---
+
+## Definition
+- **Iterator:** An object that implements the iterator protocol, containing the `__iter__()` and `__next__()` methods.
+- **Generator:** A function containing the `yield` keyword. When called, it returns a generator object (a type of iterator) without executing the function body immediately.
+- **Decorator:** A higher-order function that takes another function as an argument, extends its behavior, and returns a new function.
+
+---
+
+## Key concepts
+1. **Lazy Evaluation:** Computing values only when requested, rather than pre-calculating them. This is the core mechanic of generators.
+2. **The Yield Statement:** Pauses generator function execution, saves its state (local variables and instruction pointer), and returns a value to the caller. When `__next__()` is called again, execution resumes from the saved state.
+3. **First-Class Functions:** In Python, functions are first-class citizens. They can be passed as arguments, returned from other functions, and assigned to variables, enabling decorators.
+4. **Functools.wraps:** A helper decorator that copies the original function's metadata (name, docstring, arguments) to the wrapper function, preventing metadata loss.
+
+---
+
+## Internal working / Mermaid diagram
+
+### Generator State Suspensions vs Decorator Execution Flow
+
+```mermaid
+graph TD
+    subgraph Generator State Flow
+        G_Start[Caller calls next] --> G_Run[Run to yield]
+        G_Run --> G_Yield[Yield value & Pause State]
+        G_Yield --> G_Wait[Wait for next call]
+    end
+    
+    subgraph Decorator Flow
+        D_Call[Call Decorated Function] --> D_Pre[Run Pre-checks: Auth/Log]
+        D_Pre --> D_Exec[Execute Original Function]
+        D_Exec --> D_Post[Run Post-checks: Cache/Log]
+        D_Post --> D_Return[Return Value]
+    end
+```
+
+---
+
+## Python implementation
+
+### 1. Bad Implementation: Inefficient Large-File Loading
+Reading a massive file completely into memory as a list to process lines, causing high memory usage and potential crashes.
+
+```python
+import time
+
+# A log processor that reads all lines into a list.
+# CRITICAL BUG: Loading a 10GB file into memory will crash the process (O(N) memory allocation).
+def bad_log_processor(file_path):
+    # Reads the entire file into memory at once
+    with open(file_path, 'r') as file:
+        lines = file.readlines() 
+        
+    errors = []
+    for line in lines:
+        if "ERROR" in line:
+            errors.append(line.strip())
+            
+    return errors
+```
+
+### 2. Better Implementation: Custom Iterator Class
+Using a custom iterator class to load lines one-by-one, keeping memory usage constant ($O(1)$) but requiring verbose class boilerplate code.
+
+```python
+# A custom iterator class that reads files line-by-line.
+# TIME COMPLEXITY: O(N) | SPACE COMPLEXITY: O(1) (boilplate class structure)
+class BetterLogIterator:
+    def __init__(self, file_path):
+        self.file = open(file_path, 'r')
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = self.file.readline()
+        if not line:
+            self.file.close()
+            raise StopIteration # End of iterator signal
+            
+        if "ERROR" in line:
+            return line.strip()
+        return self.__next__() # Skip to next line recursively
+```
+
+### 3. Best Implementation: Generator Function with timing Decorator
+An optimized generator function using `yield` to stream lines lazily with $O(1)$ memory footprint, wrapped in a custom `@log_execution_time` decorator to track metrics cleanly.
+
+```python
+import functools
+import time
+
+# A reusable execution timing decorator.
+# Enforces separation of concerns and preserves function metadata.
+def log_execution_time(func):
+    @functools.wraps(func) # Preserves name and docstring of target function
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start_time
+        print(f"Function '{func.__name__}' executed in {duration:.4f} seconds")
+        return result
+    return wrapper
+
+# TIME COMPLEXITY: O(N) stream pass
+# SPACE COMPLEXITY: O(1) memory footprint (streams line-by-line)
+@log_execution_time
+def best_log_generator(file_path):
+    # Open the file and stream lines lazily using yield
+    with open(file_path, 'r') as file:
+        for line in file:
+            if "ERROR" in line:
+                yield line.strip() # Pause execution and return value
+```
+
+---
+
+## Step-by-step explanation
+1. **The memory limit**: In `bad_log_processor`, calling `file.readlines()` reads the entire file content, instantiates Python string objects for every line, and stores them in a list, quickly consuming system RAM.
+2. **Iterator State Management**: In `BetterLogIterator`, we manually implement `__iter__` and `__next__`. When the file runs out of lines, we raise `StopIteration` to signal loops to terminate, but the code is verbose.
+3. **The Yield Mechanism**: In `best_log_generator`, when the generator runs:
+   - Python reads a single line. If it contains "ERROR", it hits `yield`.
+   - The generator pauses. It returns the error line to the caller and yields control.
+   - The caller processes the line. When the caller requests the next item, the generator resumes from the exact line loop where it paused, retaining only a single line in memory at any time.
+4. **Decorator Wrapping**: The `@log_execution_time` syntax is syntactic sugar for:
+   `best_log_generator = log_execution_time(best_log_generator)`
+   When the decorated function is called, the wrapper records the start time, runs the generator stream, calculates the duration, and returns the result.
+
+---
+
+## Multiple real-world examples
+1. **Database Query Streaming:** Streaming database rows using cursor cursors (`fetchmany`) in Django or SQLAlchemy to process millions of records without memory spikes.
+2. **API Authentication Decorators:** Wrapping Flask or FastAPI routes with an `@requires_auth` decorator to validate JWT tokens before executing route handlers.
+3. **Data Pipelines (ETL):** Chaining generators together to build pipelines: `extract_lines` $\to$ `parse_json` $\to$ `filter_events` $\to$ `load_db`. Each stage processes one item at a time, keeping memory usage constant.
+
+---
+
+## Pros
+- **Memory Efficiency:** Streams large datasets in $O(1)$ space.
+- **Code Separation:** Decorators decouple business logic from cross-cutting concerns (logging, auth, metrics).
+- **Infinite Streams:** Generators can model infinite sequences (e.g. streaming sensor data or prime number sequences) that cannot fit in lists.
+
+---
+
+## Cons
+- **One-way Traversal:** Generators are single-pass iterators. You cannot rewind, slice, or index a generator (e.g. `gen[0]` or `gen[-1]`).
+- **Debugging Complexity:** Stack traces from decorators can be difficult to trace due to the wrapper layer.
+- **State Suspension Overhead:** Pausing and resuming generator states adds minor runtime overhead compared to simple loops.
+
+---
+
+## Interview questions
+
+### Beginner
+- **Q: What is the difference between yield and return in Python?**
+  - **A:** 
+    - `return` terminates the function completely, destroying its local state and returning a value to the caller.
+    - `yield` pauses the function, saves its local variables and instruction pointer state, and returns a value. When the generator is called again, it resumes execution from the saved state.
+
+### Intermediate
+- **Q: Why should you use functools.wraps when writing custom decorators?**
+  - **A:** When you wrap a function with a decorator, the decorated function's reference points to the inner `wrapper` function. This causes the original function to lose its metadata, such as its name (`__name__`) and docstring (`__doc__`). `functools.wraps` is a helper decorator that copies these attributes from the original function to the wrapper, preserving metadata and simplifying debugging.
+
+### Senior
+- **Q: Explain how to write a decorator that accepts arguments (e.g., @repeat(num_times=3)).**
+  - **A:** To write a decorator that accepts arguments, you must add an extra outer wrapper function that accepts the decorator arguments and returns the actual decorator:
+    ```python
+    def repeat(num_times):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                for _ in range(num_times):
+                    result = func(*args, **kwargs)
+                return result
+            return wrapper
+        return decorator
+
+    @repeat(num_times=3)
+    def greet(name):
+        print(f"Hello {name}")
+    ```
+
+### Staff Engineer
+- **Q: How does Python's generator delegation using `yield from` work? How does it simplify nested generator pipelines?**
+  - **A:** 
+    - **Mechanism:** `yield from <iterable>` acts as a bidirectional pipe between the caller and the sub-generator. It yields values from the sub-generator directly to the caller, and passes `send()`, `throw()`, and `close()` calls back to the sub-generator.
+    - **Simplification:** Without `yield from`, yielding values from a nested generator requires writing a loop:
+      ```python
+      for val in sub_generator:
+          yield val
+      ```
+      With `yield from`, this simplifies to:
+      ```python
+      yield from sub_generator
+      ```
+      This enables clean generator nesting and forms the foundation for cooperative multitasking pipelines (coroutines) before the introduction of async/await syntax.
+
+---
+
+## Common mistakes
+- **Attempting to reuse a generator:** Trying to loop through a generator a second time (it will be empty because it was exhausted in the first loop).
+- **Forgetting to call wraps:** Writing decorators without `@functools.wraps`, causing metadata loss.
+- **Nested loop generators:** Creating generators that contain heavy synchronous blocking operations, which halts execution pipelines.
+
+---
+
+## Best practices
+- **Use generator expressions for simple cases:** Replace simple loops with generator expressions: `sum(x*x for x in range(10))`.
+- **Always use functools.wraps:** Protect function metadata when writing custom decorators.
+- **Close files in generators:** Always wrap generator file operations in context managers (`with` statements) to ensure files are closed when generators are exhausted or closed.
+
+---
+
+## When NOT to use
+- **Frequent Random Access:** If you need to slice, sort, or access elements by index frequently, do not use generators. Use standard lists instead.
+
+---
+
+## Comparison of Concurrency/Streaming Options
+
+| Feature | List | Custom Iterator | Generator |
+| :--- | :--- | :--- | :--- |
+| **Memory Complexity** | $O(N)$ | $O(1)$ | $O(1)$ |
+| **Boilerplate Code** | Low | High (requires classes) | Low (uses `yield`) |
+| **Random Access** | Yes | No | No |
+| **Infinite Sequences**| No | Yes | Yes |
+
+---
+
+## Summary
+Generators enable memory-efficient data streaming by yielding values lazily, while decorators provide a clean, reusable way to extend function behaviors. Using them together helps write clean, maintainable, and scalable Python code.
+
+---
+
+## Related topics
+- [Collections](../collections)
+- [Exceptions & Context Managers](../exceptions-context-managers)
+- [File I/O & Serialization](../file-io-serialization)

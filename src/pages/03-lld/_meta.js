@@ -6,5 +6,7 @@ export default {
   "uml": "UML & Modeling",
   "java": "Java Fundamentals",
   "concurrency-java": "Concurrency in Java",
+  "python": "Python Fundamentals",
+  "concurrency-python": "Concurrency in Python",
   "machine-coding": "Machine Coding"
 };

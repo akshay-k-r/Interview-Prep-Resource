@@ -113,6 +113,81 @@ public class CSVDataMiner extends DataMiner {
 }
 ```
 
+### Python Implementation
+In Python, we use the `abc` module for abstract base classes. To simulate the `final` keyword, we can use the `@typing.final` decorator (since Python 3.8).
+
+```python
+from abc import ABC, abstractmethod
+from typing import final
+
+# 1. Abstract Base Class
+class DataMiner(ABC):
+    
+    @final
+    def mine_data(self, path: str) -> None:
+        """The Template Method: defines the invariant sequence of steps."""
+        self.open_file(path)
+        self.extract_data()
+        self.parse_data()
+        self.analyze_data()
+        self.send_report()
+        self.clean_up() # Hook
+
+    # Invariant methods (common implementation)
+    def open_file(self, path: str) -> None:
+        print(f"Opening file: {path}")
+
+    def analyze_data(self) -> None:
+        print("Analyzing data generically.")
+
+    def send_report(self) -> None:
+        print("Sending report.")
+
+    # Variant methods (abstract steps to be defined by subclasses)
+    @abstractmethod
+    def extract_data(self) -> None:
+        pass
+
+    @abstractmethod
+    def parse_data(self) -> None:
+        pass
+
+    # Hook method (optional implementation)
+    def clean_up(self) -> None:
+        pass
+
+
+# 2. Concrete Classes
+class PDFDataMiner(DataMiner):
+    def extract_data(self) -> None:
+        print("Extracting text and tables from PDF.")
+
+    def parse_data(self) -> None:
+        print("Parsing PDF internal object hierarchy.")
+
+
+class CSVDataMiner(DataMiner):
+    def extract_data(self) -> None:
+        print("Reading raw CSV bytes.")
+
+    def parse_data(self) -> None:
+        print("Parsing CSV cells into structured rows.")
+
+    def clean_up(self) -> None:
+        print("Releasing file pointer handles.")
+
+
+# --- Usage ---
+if __name__ == "__main__":
+    print("--- PDF Miner ---")
+    pdf_miner = PDFDataMiner()
+    pdf_miner.mine_data("financial_report.pdf")
+
+    print("\n--- CSV Miner ---")
+    csv_miner = CSVDataMiner()
+    csv_miner.mine_data("transactions.csv")
+```
+
 ## Step-by-step explanation
 1. Identify a multi-step algorithm with identical overarching structure but differing detailed steps.
 2. Create an abstract base class.
@@ -124,6 +199,8 @@ public class CSVDataMiner extends DataMiner {
 1. **Web Frameworks:** Servlets in Java (`HttpServlet`). The framework handles the HTTP connection (the template), while you override `doGet()` and `doPost()` (the steps).
 2. **UI Frameworks:** React's component lifecycle (`componentDidMount`, `render`, `componentWillUnmount`).
 3. **ETL Pipelines:** Extract, Transform, Load processes where the overarching schedule is the same, but data sources/destinations differ.
+4. **Testing Frameworks:** In JUnit or Pytest, the base execution model (setup → test run → teardown) is defined by the runner, while developers override `setUp()` or write test methods.
+5. **Python standard library:** The `unittest.TestCase` class executes a test suite by template-calling `setUp()`, running the test method, and then executing `tearDown()`.
 
 ## Pros
 - **Code Reuse:** Pulls common code up into a superclass, eliminating duplication.
@@ -139,14 +216,26 @@ public class CSVDataMiner extends DataMiner {
 ### Beginner
 - **Q: Why is the template method in the base class usually marked as `final`?**
   - **A:** To ensure that subclasses cannot alter the high-level structure/sequence of the algorithm.
+- **Q: How does the Template Method pattern enforce code reuse?**
+  - **A:** By centralizing the common steps and flow of an algorithm in an abstract base class, so subclasses only need to implement the steps that vary, reducing duplication.
 
 ### Intermediate
 - **Q: What is a "Hook" in the Template Method pattern?**
   - **A:** A hook is a method in the abstract base class that has an empty or default implementation. It is optional for subclasses to override it, providing a way to "hook" into the algorithm at specific points.
+- **Q: What is the "Hollywood Principle" and how does it relate to this pattern?**
+  - **A:** The principle is: "Don't call us, we'll call you." In the Template Method pattern, the base class controls the high-level flow and calls subclass implementations when needed. Subclasses do not dictate the flow, they are simply called.
 
 ### Senior
 - **Q: What is the difference between Template Method and Strategy patterns?**
   - **A:** Template Method is based on **inheritance**; it alters parts of an algorithm at compile time by subclassing. Strategy is based on **composition**; it alters the entire algorithm at runtime by supplying different object instances.
+- **Q: How can the Template Method violate the Liskov Substitution Principle (LSP) if not designed carefully?**
+  - **A:** If a subclass implements one of the abstract steps by throwing an `UnsupportedOperationException`, it changes the postconditions and assumptions of the base class's template algorithm. Subclasses must adhere to the contract of the steps defined in the abstract base.
+
+### Staff Engineer
+- **Q: How do modern web frameworks (like Spring MVC interceptors or Express middlewares) implement the Template Method concept dynamically without classical inheritance?**
+  - **A:** They use the **Interceptor Pattern** or **Chain of Responsibility** paired with delegation. Instead of extending a base class to fill in hooks, developers write standalone middleware or interceptors that register callbacks. The framework runs a loop that executes these dynamically assembled callbacks around the handler, avoiding inheritance completely and maintaining flexibility.
+- **Q: Inheritance is often considered a design smell due to tight coupling. How can you refactor a legacy Template Method pattern to a composition-based design?**
+  - **A:** You can refactor it by replacing inheritance with the **Strategy Pattern** or passing functions/callbacks. Define the main workflow context that accepts a list of strategies or lambda functions for the variable steps. The context executes the invariant steps and invokes the strategy implementations or delegates for the variant parts, decoupling the components.
 
 ## Common mistakes
 - Creating too many abstract steps, which makes implementing a subclass tedious.
@@ -170,3 +259,4 @@ The Template Method pattern establishes a strict sequence of operations while pr
 ## Related topics
 - [Strategy Pattern](../strategy)
 - [Factory Method](../../creational/factory)
+- [Liskov Substitution Principle (LSP)](../../../03-lld/solid/liskov-substitution-principle)

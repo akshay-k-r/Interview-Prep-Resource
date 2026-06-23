@@ -142,6 +142,73 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. Observer Interface
+class EventListener(ABC):
+    @abstractmethod
+    def update(self, event_type: str, file_path: str) -> None:
+        pass
+
+
+# 2. Subject (Publisher)
+class EventManager:
+    def __init__(self) -> None:
+        self._listeners: list[EventListener] = []
+
+    def subscribe(self, listener: EventListener) -> None:
+        self._listeners.append(listener)
+
+    def unsubscribe(self, listener: EventListener) -> None:
+        self._listeners.remove(listener)
+
+    def notify(self, event_type: str, file_path: str) -> None:
+        for listener in self._listeners:
+            listener.update(event_type, file_path)
+
+
+class Editor:
+    def __init__(self) -> None:
+        self.events = EventManager()
+        self._file: str = ""
+
+    def open_file(self, file_path: str) -> None:
+        self._file = file_path
+        self.events.notify("open", self._file)
+
+    def save_file(self) -> None:
+        self.events.notify("save", self._file)
+
+
+# 3. Concrete Observers
+class EmailNotificationListener(EventListener):
+    def __init__(self, email: str) -> None:
+        self._email = email
+
+    def update(self, event_type: str, file_path: str) -> None:
+        print(f"Email to {self._email}: Someone performed {event_type} on file: {file_path}")
+
+
+class LogOpenListener(EventListener):
+    def update(self, event_type: str, file_path: str) -> None:
+        print(f"Save to log: {file_path} was modified with event: {event_type}")
+
+
+# 4. Usage
+if __name__ == "__main__":
+    editor = Editor()
+
+    logger = LogOpenListener()
+    email_alert = EmailNotificationListener("admin@example.com")
+
+    editor.events.subscribe(logger)
+    editor.events.subscribe(email_alert)
+
+    editor.open_file("metrics.json")
+```
+
 ## Step-by-step explanation
 1. Create an `Observer` interface with an `update()` method.
 2. Inside the `Subject` class, add a list field to store references to subscriber objects.
@@ -154,6 +221,7 @@ public class Main {
 2. **News Feeds:** Subscribing to a YouTube channel or RSS feed.
 3. **Stock Market Tickers:** Various dashboards (observers) updating instantly when a stock price (subject) changes.
 4. **MVC Architecture:** The View acts as an Observer of the Model (Subject). When the Model updates, the View is notified to re-render.
+5. **Native Event Handlers:** Node.js's `EventEmitter` or Python's `asyncio` event systems allow developers to bind multiple callbacks (observers) to custom event keys.
 
 ## Pros
 - **Open/Closed Principle:** You can introduce new subscriber classes without modifying the publisher's code.
@@ -170,14 +238,28 @@ public class Main {
 ### Beginner
 - **Q: What problem does the Observer pattern solve?**
   - **A:** It allows objects to be notified of state changes in other objects automatically, eliminating the need for constant, inefficient polling.
+- **Q: What is the difference between push and pull models in Observer notifications?**
+  - **A:** 
+    - **Push model:** The Subject sends detailed information about the change to the observers via parameters in the `update()` call.
+    - **Pull model:** The Subject notifies observers that a change occurred, and the observers query the Subject's public API to fetch the exact changed properties they need.
 
 ### Intermediate
 - **Q: What is the "Lapsed Listener Problem" in the Observer pattern?**
   - **A:** It occurs when an observer is destroyed by the application but forgets to unsubscribe from the subject. The subject's list still holds a strong reference to the observer, preventing the Garbage Collector from freeing the memory, leading to a memory leak.
+- **Q: How would you make the Observer pattern thread-safe in a multi-threaded application?**
+  - **A:** Ensure access to the listener list is synchronized (e.g., using `synchronized` blocks or `CopyOnWriteArrayList` in Java). Alternatively, use a lock during subscription, unsubscription, and notification loops, or delegate notifications to an event thread queue.
 
 ### Senior
 - **Q: What is the difference between the Observer pattern and the Publish-Subscribe (Pub/Sub) pattern?**
   - **A:** In the traditional Observer pattern, the Subject and Observer are aware of each other (Subject calls Observer directly). In Pub/Sub, there is an intermediate Event Bus or Message Broker (like Kafka/RabbitMQ) between them. Publishers and Subscribers are completely decoupled and unaware of each other's existence.
+- **Q: How do frameworks like RxJava or RxJS build upon the Observer pattern?**
+  - **A:** Reactive Extensions (Rx) generalize the Observer pattern to handle data streams. They add a standard way to signal completion (`onComplete()`) and errors (`onError()`), and introduce functional operators (like `map`, `filter`, `flatmap`) to transform and compose event streams dynamically.
+
+### Staff Engineer
+- **Q: In reactive microservices architectures, how do you handle event ordering and "at-least-once" delivery semantics across distributed Observers?**
+  - **A:** Distributed observers consume events from message partition groups (like Kafka consumer groups). Event ordering is guaranteed by routing events with the same partition key (e.g., `order_id`) to the same partition. At-least-once delivery is achieved by disabling auto-commit, processing the event, and manually committing the offsets only after successful execution. Observers must implement **idempotency** to handle potential duplicate events.
+- **Q: How does the Lapsed Listener problem manifest in modern UI libraries like React, and how is it prevented?**
+  - **A:** In React, if a component registers a global event listener or subscribes to a store inside a `useEffect` hook, but does not return a cleanup function, that subscription persists even after the component unmounts. The unmounted component remains in memory (a leak) and continues to receive updates (triggering console errors for setting state on unmounted components). Prevent this by returning a cleanup function in `useEffect` that calls `unsubscribe()` or `removeEventListener()`.
 
 ## Common mistakes
 - **Cascading updates:** If Observer A triggers a state change in the Subject, which notifies Observer B, which triggers another change... this can result in infinite loops.

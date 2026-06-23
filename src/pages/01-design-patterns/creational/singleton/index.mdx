@@ -104,7 +104,106 @@ public class BestSingleton {
     }
 }
 ```
-*(Note: In Java, using an `enum` is arguably an even better implementation because it provides inherent serialization and reflection protection.)*
+
+### Enum-based implementation (Recommended for Java)
+Joshua Bloch's recommended approach. The JVM guarantees exactly one instance, handles serialization, and prevents reflection attacks.
+
+```java
+public enum ConfigManager {
+    INSTANCE;
+
+    private String configValue;
+
+    public String getConfigValue() { return configValue; }
+    public void setConfigValue(String val) { this.configValue = val; }
+
+    public void doBusinessLogic() {
+        System.out.println("Config: " + configValue);
+    }
+}
+
+// Usage
+ConfigManager.INSTANCE.setConfigValue("production");
+ConfigManager.INSTANCE.doBusinessLogic();
+```
+
+## Python implementation
+
+### Bad implementation
+Naive approach — no thread safety, no enforcement. Multiple calls to the constructor create separate instances.
+
+```python
+class BadSingleton:
+    _instance = None
+
+    def __init__(self):
+        # Anyone can call BadSingleton() and get a new object
+        pass
+
+    @staticmethod
+    def get_instance():
+        if BadSingleton._instance is None:
+            BadSingleton._instance = BadSingleton()
+        return BadSingleton._instance
+
+# Problem: Direct instantiation bypasses the pattern
+a = BadSingleton()
+b = BadSingleton()
+print(a is b)  # False — pattern is broken!
+```
+
+### Better implementation (using `__new__`)
+Overriding `__new__` ensures that even direct constructor calls return the same instance. However, `__init__` is called on every constructor invocation, potentially resetting state.
+
+```python
+class BetterSingleton:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        # Warning: This runs EVERY time BetterSingleton() is called
+        self.value = None
+
+a = BetterSingleton()
+b = BetterSingleton()
+print(a is b)  # True
+```
+
+### Best implementation (Thread-safe Metaclass Singleton)
+A metaclass-based approach guarantees a single instance, is thread-safe, and cleanly separates singleton logic from business logic.
+
+```python
+import threading
+
+class SingletonMeta(type):
+    _instances = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+        return cls._instances[cls]
+
+class DatabaseConnection(metaclass=SingletonMeta):
+    def __init__(self):
+        # This will only execute once
+        self.connection = "Connected to DB"
+
+    def query(self, sql: str) -> str:
+        return f"Executing: {sql}"
+
+# Usage
+db1 = DatabaseConnection()
+db2 = DatabaseConnection()
+print(db1 is db2)             # True
+print(db1.query("SELECT 1"))  # Executing: SELECT 1
+```
 
 ## Step-by-step explanation
 1. **Make the constructor private:** Ensure no external class can directly invoke `new Singleton()`.
@@ -118,6 +217,7 @@ public class BestSingleton {
 2. **Hardware Interfaces:** Code interfacing with physical hardware (like a printer spooler or GPU) shouldn't allow parallel uncoordinated instructions.
 3. **Application Loggers:** A single log file should be accessed by a single logger instance to prevent file-locking crashes.
 4. **Configuration Manager:** Application-wide settings parsed from a `.env` or configuration file should be loaded once and kept in a central, globally accessible state.
+5. **Thread Pool Manager:** An application-wide thread pool (e.g., `Executors.newFixedThreadPool()`) should be created once and shared, preventing thread over-provisioning.
 
 ## Pros
 - **Certainty:** You are absolutely sure that a class has only a single instance.
@@ -135,17 +235,29 @@ public class BestSingleton {
 - **Q: What is the primary purpose of a Singleton?**
 - A: To restrict the instantiation of a class to exactly one object and provide a global point of access to it.
 
+- **Q: Name two real-world scenarios where Singleton is appropriate.**
+- A: Database connection pool management and application-wide logging — both require a single shared resource to prevent resource exhaustion or file-locking conflicts.
+
 ### Intermediate
 - **Q: What is the problem with synchronizing the entire `getInstance()` method?**
 - A: It causes a huge performance bottleneck because every single read access gets queued up waiting for the lock, even after the object is fully initialized.
+
+- **Q: Why is the `volatile` keyword critical in Double-Checked Locking?**
+- A: Without `volatile`, the JVM can reorder instructions during object construction. Thread A may assign the reference to `instance` *before* the constructor fully finishes. Thread B sees a non-null `instance` and uses a half-constructed object, leading to subtle, hard-to-reproduce bugs.
 
 ### Senior
 - **Q: How can you break a Singleton, and how do you prevent it?**
 - A: You can break it using **Reflection** (by changing constructor visibility) or **Serialization** (by deserializing into a new object). To prevent this, throw an exception in the constructor if an instance exists, and override the `readResolve()` method to return the existing instance during deserialization.
 
+- **Q: How does Singleton interact with class loaders in Java?**
+- A: Each class loader in Java maintains its own namespace. If the Singleton class is loaded by two different class loaders (common in application servers and OSGi), two separate instances will exist — one per class loader. To prevent this, ensure the Singleton class is loaded by a shared parent class loader.
+
 ### Staff Engineer
 - **Q: How does the Singleton pattern behave in a distributed microservices environment?**
 - A: Singletons are confined to a single JVM/Process. In a distributed system, a "Singleton" class will have one instance per node/service replica. If true system-wide singularity is required, you must use external distributed locks (e.g., via Redis or ZooKeeper) or single-leader architecture.
+
+- **Q: In a reactive / event-driven architecture (e.g., Vert.x, Project Reactor), what are the risks of using Singleton with mutable state?**
+- A: In non-blocking reactive systems, a mutable Singleton becomes a contention bottleneck. Multiple event-loop threads accessing shared mutable state in the Singleton can cause data races even with synchronization (which blocks the event loop). The solution is to make the Singleton's state immutable, use thread-local variants, or replace it with message-passing actors.
 
 ## Common mistakes
 - **Ignoring Thread Safety:** A naive lazy-initialized Singleton is a guaranteed bug in an asynchronous environment.
@@ -155,6 +267,8 @@ public class BestSingleton {
 ## Best practices
 - **Use Enums in Java:** Joshua Bloch recommends using an `enum` for Singletons as it guarantees thread safety and serialization safety automatically.
 - **Dependency Injection:** Modern frameworks (like Spring) handle Singletons via DI containers automatically. Let the framework manage the lifecycle instead of writing raw Singleton code.
+- **Use Metaclass in Python:** The metaclass approach cleanly separates singleton enforcement from business logic and is inherently thread-safe when combined with locks.
+- **Lazy vs. Eager:** Use lazy initialization (create on first access) for expensive resources. Use eager initialization (create at class load) when the instance is always needed and startup time is acceptable.
 
 ## When NOT to use
 - When dealing with multi-tenant architectures where different configurations might be needed per tenant.
@@ -168,5 +282,7 @@ public class BestSingleton {
 The Singleton pattern is a robust way to ensure exactly one instance of a class exists across the application. While powerful for managing shared resources like loggers and DB connections, it should be used sparingly to avoid introducing tight coupling and hard-to-test global states.
 
 ## Related topics
-- Factory Method
-- Dependency Injection
+- [Factory Method](../factory)
+- [Abstract Factory](../abstract-factory)
+- [Builder](../builder)
+- [Dependency Injection](../../../03-lld/design-principles/dependency-injection)

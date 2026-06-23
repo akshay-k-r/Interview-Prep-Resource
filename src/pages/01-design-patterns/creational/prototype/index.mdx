@@ -143,6 +143,110 @@ public class Main {
 }
 ```
 
+## Python implementation
+
+### Bad implementation
+Manually copying fields is error-prone and tightly couples the client to the concrete class.
+
+```python
+class Shape:
+    def __init__(self, x: int, y: int, color: str):
+        self.x = x
+        self.y = y
+        self.color = color
+
+def copy_shape(original: Shape) -> Shape:
+    # Bad: Coupled to concrete class. What about subclasses like Circle?
+    copy = Shape(0, 0, "")
+    copy.x = original.x
+    copy.y = original.y
+    copy.color = original.color
+    # Private or dynamically-added attributes will be missed!
+    return copy
+```
+
+### Better implementation (using `copy` module)
+Python’s built-in `copy` module provides shallow and deep copy, but lacks a clean protocol for customization.
+
+```python
+import copy
+
+class Monster:
+    def __init__(self, name: str, health: int, inventory: list):
+        self.name = name
+        self.health = health
+        self.inventory = inventory  # Mutable nested object
+
+# Shallow copy — inventory list is SHARED between original and clone
+original = Monster("Dragon", 1000, ["sword", "shield"])
+shallow = copy.copy(original)
+shallow.inventory.append("potion")
+print(original.inventory)  # ['sword', 'shield', 'potion'] — Bug!
+
+# Deep copy — inventory list is fully independent
+deep = copy.deepcopy(original)
+deep.inventory.append("ring")
+print(original.inventory)  # ['sword', 'shield', 'potion'] — Unaffected
+```
+
+### Best implementation (Prototype with Registry)
+A clean Prototype interface with a registry for pre-configured templates.
+
+```python
+from abc import ABC, abstractmethod
+import copy
+from typing import Dict
+
+# 1. Prototype Interface
+class Prototype(ABC):
+    @abstractmethod
+    def clone(self) -> "Prototype":
+        pass
+
+# 2. Concrete Prototype
+class Monster(Prototype):
+    def __init__(self, name: str, health: int, attack: int, abilities: list):
+        self.name = name
+        self.health = health
+        self.attack = attack
+        self.abilities = abilities
+
+    def clone(self) -> "Monster":
+        # Deep copy ensures complete independence
+        return copy.deepcopy(self)
+
+    def __repr__(self) -> str:
+        return f"{self.name} | HP: {self.health} | ATK: {self.attack}"
+
+# 3. Prototype Registry
+class MonsterRegistry:
+    def __init__(self):
+        self._cache: Dict[str, Monster] = {}
+
+    def register(self, key: str, prototype: Monster):
+        self._cache[key] = prototype
+
+    def get(self, key: str) -> Monster:
+        if key not in self._cache:
+            raise KeyError(f"Unknown monster type: {key}")
+        return self._cache[key].clone()
+
+# Usage
+def main():
+    registry = MonsterRegistry()
+    registry.register("dragon", Monster("Dragon", 1000, 50, ["fire_breath", "fly"]))
+    registry.register("goblin", Monster("Goblin", 100, 10, ["sneak"]))
+
+    # Instantly get fully-formed clones
+    mob1 = registry.get("dragon")
+    mob2 = registry.get("dragon")
+    mob2.health = 800
+
+    print(mob1)  # Dragon | HP: 1000 | ATK: 50
+    print(mob2)  # Dragon | HP: 800 | ATK: 50
+    print(mob1 is mob2)  # False — independent objects
+```
+
 ## Step-by-step explanation
 1. Create the `Prototype` interface declaring the `clone()` method.
 2. Implement `clone()` in the concrete class.
@@ -152,8 +256,10 @@ public class Main {
 
 ## Multiple real-world examples
 1. **Video Games:** Spawning identical enemies or bullets on a screen. Parsing the 3D mesh and textures from disk for every single bullet is fatal to frame rates; cloning an existing loaded bullet is instant.
-2. **Configuration objects:** A base `Config` object is read from a file. When a user modifies settings for a specific session, a clone of the base config is created and tweaked.
+2. **Configuration Objects:** A base `Config` object is read from a file. When a user modifies settings for a specific session, a clone of the base config is created and tweaked.
 3. **Java's `Object.clone()`:** Though notoriously flawed in its raw implementation, it represents the native attempt at this pattern.
+4. **Spreadsheet Cells:** Copying a cell in Excel/Google Sheets clones its formatting, formula, and style. The new cell is independent but starts identical.
+5. **CI/CD Pipeline Templates:** A base pipeline configuration is cloned and customized per project/branch. Jenkins, GitLab CI, and GitHub Actions all use template-based approaches that are conceptually Prototype patterns.
 
 ## Pros
 - **Performance:** Eliminates the heavy overhead of initializing complex objects.
@@ -170,17 +276,29 @@ public class Main {
 - **Q: What is the main goal of the Prototype pattern?**
 - A: To create new objects by copying an existing object (a prototype) instead of instantiating them from scratch, saving performance and setup code.
 
+- **Q: When is Prototype preferred over using `new`?**
+- A: When object construction is expensive (requires DB calls, network requests, or complex calculations), and you need multiple similar objects with minor variations.
+
 ### Intermediate
 - **Q: What is the difference between a Shallow Copy and a Deep Copy?**
 - A: A Shallow copy duplicates primitive fields but only copies the *references* to nested objects. Both the original and clone will point to the exact same nested object. A Deep copy duplicates the primitive fields *and* recursively clones all nested reference objects.
+
+- **Q: How does the Prototype Registry (Cache) pattern improve performance in a game engine?**
+- A: Pre-configured prototypes (e.g., enemy types, weapons) are loaded once during initialization. At runtime, spawning a new enemy is a `clone()` call instead of re-reading mesh data, textures, and AI configurations from disk. This can reduce spawn time from milliseconds to microseconds.
 
 ### Senior
 - **Q: How do you gracefully implement Deep Copying in Java without writing massive boilerplate clone methods?**
 - A: Instead of manually writing copy constructors recursively, you can serialize the object (using Java Serialization, JSON (Jackson/Gson), or Kryo) into a byte stream and immediately deserialize it back into a new object. This guarantees a clean, severed deep copy.
 
+- **Q: What are the problems with Java's `Cloneable` interface and how do you avoid them?**
+- A: Java’s `Cloneable` is a marker interface with no methods — the actual `clone()` method is on `Object` and is `protected`. It performs only shallow copies by default, throws `CloneNotSupportedException` (a checked exception), and has no way to enforce deep copy contracts. Prefer copy constructors or the `Prototype` interface pattern demonstrated above.
+
 ### Staff Engineer
 - **Q: How does Prototype integrate with the Command pattern?**
 - A: In highly dynamic systems (like an undo/redo queue or a macro-recorder), you might need to save the exact state of a Command at a specific moment in time before pushing it to the history stack. The Prototype pattern allows you to clone the Command object preserving its specific state context to ensure perfect reversibility.
+
+- **Q: In a distributed system, how would you implement a Prototype Registry that is shared across multiple service instances?**
+- A: Use an external store (Redis, Memcached, or a database) as the registry. Prototypes are serialized and stored centrally. Each service instance deserializes the prototype on demand, effectively performing a deep copy over the network. This is how distributed caching systems (e.g., Hazelcast) implement near-cache with prototype-like semantics.
 
 ## Common mistakes
 - **Accidental Shallow Copies:** Relying on Java's `super.clone()` when your object contains a `List` or custom class, leading to shared state bugs where modifying the clone alters the original.
@@ -202,6 +320,8 @@ public class Main {
 The Prototype pattern provides an efficient alternative to traditional object instantiation by utilizing cloning. It is indispensable in performance-critical applications like game engines or heavy data processors. However, developers must be highly vigilant regarding the dangers of shallow copying nested references.
 
 ## Related topics
-- Factory Method
-- Builder
-- Memento
+- [Factory Method](../factory)
+- [Builder](../builder)
+- [Singleton](../singleton)
+- [Memento](../../behavioral/memento)
+- [Command](../../behavioral/command)

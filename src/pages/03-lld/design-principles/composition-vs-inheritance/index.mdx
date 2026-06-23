@@ -1,129 +1,224 @@
 # Composition vs Inheritance
 
 ## Introduction
-"Favor Composition over Inheritance" is one of the most widely cited design principles in Object-Oriented Programming, heavily popularized by the *Gang of Four* Design Patterns book. It dictates how objects should be designed to reuse code.
+The principle "Favor Composition over Inheritance" is a foundational guideline in object-oriented design. First popularized by the *Gang of Four* in their book *Design Patterns*, it advises developers to build reusable, flexible systems by composing objects rather than establishing rigid compile-time class hierarchies.
 
 ## Problem Statement
-Inheritance (IS-A) is the first tool developers reach for to reuse code. 
-Imagine building a game. You have an `Animal` base class with a `move()` method. You create a `Dog` that inherits `Animal`. Great.
-Now you need a `Bird`. It inherits `Animal`, but it needs to `fly()`. You put `fly()` in `Bird`.
-Now you need a `Duck`. A Duck IS-A `Bird` (so it inherits `fly()`), but it also swims. So you make it inherit from a new `SwimmingAnimal` class? Java doesn't allow multiple inheritance. 
-If you put `swim()` and `fly()` in the base `Animal` class, then the `Dog` inherits `fly()`. 
-Deep inheritance trees quickly become incredibly brittle, rigid, and impossible to logically manage. This is known as the **Gorilla Banana Problem**: "You wanted a banana but what you got was a gorilla holding the banana and the entire jungle."
+Inheritance (the "IS-A" relationship) is often the first tool developers use to share code. For example, to build a `Stack` class, a developer might make it inherit from `ArrayList` to reuse its storage and list manipulation methods. However, this inheritance leaks the parent class's interface. Clients can call `stack.add(0, item)` or `stack.remove(5)`, bypassing the stack's Last-In-First-Out (LIFO) invariants and corrupting its state.
 
 ## Why this exists
-To create flexible, modular software. Composition allows you to build complex behaviors by assembling small, interchangeable components at runtime, rather than locking behaviors into rigid compile-time class hierarchies.
+To prevent brittle, tightly coupled code structures. Deep inheritance hierarchies suffer from the **Fragile Base Class** problem: changing a parent class can unexpectedly break subclass behaviors. Composition solves this by assembling small, interchangeable components at runtime, creating decoupled systems.
 
 ## Real-world analogy
-- **Inheritance (IS-A):** A generic `Smartphone` class. An `iPhone` IS-A `Smartphone`. It inherits the screen and battery from the parent design. If Apple changes the parent design, all iPhones change.
-- **Composition (HAS-A):** Building a PC. A computer doesn't *inherit* from a Graphics Card. A computer **HAS-A** Graphics Card, **HAS-A** CPU, and **HAS-A** Hard Drive. If you want better graphics, you simply swap the component. You don't have to redesign the entire computer hierarchy.
+Consider a **desktop computer**.
+A computer does not *inherit* from a Graphics Card, a CPU, or a Hard Drive (an inheritance "IS-A" relationship). Instead, a computer **HAS-A** Graphics Card, **HAS-A** CPU, and **HAS-A** Hard Drive (composition). If you want to upgrade your graphics, you swap out the graphics card component. You do not have to redesign the entire computer architecture.
+
+Another analogy is a **luggage set**. You do not build a "SuitcaseWithWheelsAndLock" class by inheriting from a base "Box" class. Instead, you compose a suitcase by attaching wheels and a combination lock component to it.
 
 ## Definition
-- **Inheritance:** Designing classes based on what they *are*. (Whitebox reuse).
-- **Composition:** Designing classes based on what they *have* or what they *do*, by injecting independent components into a class. (Blackbox reuse).
+- **Inheritance (Whitebox Reuse):** Code reuse achieved by subclassing a parent class. The subclass is exposed to the parent's internal representation, coupling them together.
+- **Composition (Blackbox Reuse):** Code reuse achieved by assembling objects inside other objects. The containing class holds private references to the component classes, interacting solely through their public interfaces.
+
+## Key concepts
+- **IS-A vs. HAS-A:**
+  - **IS-A (Inheritance):** A structural relationship where a child class specializes a parent class.
+  - **HAS-A (Composition):** A behavioral relationship where a class contains one or more components to execute tasks.
+- **Fragile Base Class:** A design issue where modifications to a base class introduce bugs in derived classes.
+- **Gorilla-Banana Problem:** Coined by Joe Armstrong, illustrating that inheriting a small behavior can pull in unnecessary parent context: *"You wanted a banana but what you got was a gorilla holding the banana and the entire jungle."*
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    subgraph Inheritance Stack Violation
+        ArrayList[ArrayList: add, remove, get]
+        BadStack[Stack: push, pop] -->|Extends IS-A| ArrayList
+        Client[Client] -->|Bypasses LIFO| ArrayList
+    end
+
+    subgraph Composition Stack Compliant
+        BestStack[Stack: push, pop] -->|Composes HAS-A| ListContract[List Interface]
+        ListContract -.->|Implemented by| ArrayList2[ArrayList]
+        Client2[Client] -->|Interacts only via| BestStack
+    end
+```
 
 ## Python/Java implementation
 
-### Bad Implementation (Inheritance)
+### Bad implementation
+*A `Stack` class that inherits from `ArrayList` to reuse its storage methods. This exposes index-based updates to clients, violating encapsulation and LIFO invariants.*
+
 ```java
-class Enemy {
-    public void attack() { System.out.println("Attacking!"); }
-}
+package bad;
 
-// Seems fine at first...
-class FlyingEnemy extends Enemy {
-    public void fly() { System.out.println("Flying!"); }
-}
+import java.util.ArrayList;
 
-class SwimmingEnemy extends Enemy {
-    public void swim() { System.out.println("Swimming!"); }
-}
-
-// THE FATAL FLAW: What if we want a Flying AND Swimming enemy (like a Dragon)?
-// We can't extend both! The inheritance tree is broken.
-class Dragon extends FlyingEnemy {
-    // We have to duplicate the swim() code here!
-    public void swim() { System.out.println("Swimming!"); } 
-}
-```
-
-### Better Implementation (Composition)
-```java
-// 1. Define distinct Behaviors (Components)
-interface FlyBehavior { void fly(); }
-interface SwimBehavior { void swim(); }
-
-class Wings implements FlyBehavior {
-    public void fly() { System.out.println("Flapping wings!"); }
-}
-
-class Fins implements SwimBehavior {
-    public void swim() { System.out.println("Paddling fins!"); }
-}
-
-// 2. The main class HAS behaviors, it doesn't inherit them.
-class Enemy {
-    private FlyBehavior flyBehavior;
-    private SwimBehavior swimBehavior;
-
-    // We can mix and match components!
-    public Enemy(FlyBehavior f, SwimBehavior s) {
-        this.flyBehavior = f;
-        this.swimBehavior = s;
+// Violates encapsulation and LSP: Stack is exposed as a list
+public class Stack<T> extends ArrayList<T> {
+    public void push(T item) {
+        add(item); // Inherited from ArrayList
     }
 
-    public void performFly() {
-        if (flyBehavior != null) flyBehavior.fly();
+    public T pop() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Stack is empty");
+        }
+        return remove(size() - 1); // Inherited from ArrayList
     }
-}
 
-public class Main {
     public static void main(String[] args) {
-        // Build a Dragon dynamically using composition!
-        Enemy dragon = new Enemy(new Wings(), new Fins());
-        dragon.performFly();
+        Stack<String> names = new Stack<>();
+        names.push("Alice");
+        names.push("Bob");
+
+        // Client can call arbitrary ArrayList methods, breaking LIFO invariants!
+        names.add(0, "Eve"); // Inserted at the bottom of the stack
+        names.remove(1); // Removed from the middle
     }
 }
 ```
+
+### Better implementation
+*Subclassing but overriding list mutators to throw exceptions. While this protects the stack's state, it pollutes the class with stub methods and breaks the Liskov Substitution Principle.*
+
+```java
+package better;
+
+import java.util.ArrayList;
+
+public class Stack<T> extends ArrayList<T> {
+    public void push(T item) {
+        super.add(item);
+    }
+
+    public T pop() {
+        return super.remove(super.size() - 1);
+    }
+
+    // Overriding parent methods to prevent misuse. Breaks LSP!
+    @Override
+    public void add(int index, T element) {
+        throw new UnsupportedOperationException("Index-based insertions not allowed in a Stack");
+    }
+
+    @Override
+    public T remove(int index) {
+        throw new UnsupportedOperationException("Index-based removals not allowed in a Stack");
+    }
+}
+```
+
+### Best implementation
+*A fully composed `Stack`. The class holds a private reference to a `List` interface and exposes only the required stack operations, preserving encapsulation.*
+
+```java
+package best;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+// Composition: Stack HAS-A List, exposing only Stack behaviors
+public class Stack<T> {
+    private final List<T> storage; // Private, encapsulated component
+
+    // Program to the interface (List) and inject the implementation
+    public Stack() {
+        this.storage = new ArrayList<>();
+    }
+
+    public Stack(List<T> storage) {
+        this.storage = Objects.requireNonNull(storage, "Storage cannot be null");
+    }
+
+    public void push(T item) {
+        storage.add(item); // Delegated to the list component
+    }
+
+    public T pop() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Stack is empty");
+        }
+        return storage.remove(storage.size() - 1);
+    }
+
+    public T peek() {
+        if (isEmpty()) {
+            throw new IllegalStateException("Stack is empty");
+        }
+        return storage.get(storage.size() - 1);
+    }
+
+    public boolean isEmpty() {
+        return storage.isEmpty();
+    }
+
+    public int size() {
+        return storage.size();
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Identify the Relationship:** We evaluate `Stack` and realize it is a storage structure, but it is not logically a list ("HAS-A" list, not "IS-A" list).
+2. **Declare Private Component:** We replace `extends ArrayList<T>` with a private instance field `private final List<T> storage`.
+3. **Delegate Operations:** The `push` and `pop` methods delegate storage operations to the private `List` instance.
+4. **Encapsulate Interface:** The stack exposes only LIFO methods (`push`, `pop`, `peek`, `isEmpty`), preventing clients from accessing the list's index mutators.
 
 ## Multiple real-world examples
-1. **React / UI Frameworks:** Modern UI frameworks strongly favor composition. Instead of creating a `RedRoundedButton` class that inherits from `Button`, React uses composition: `<Button><Icon /><Text color="red" /></Button>`. You compose the UI using small, independent building blocks.
-2. **Entity-Component-System (ECS) in Game Dev:** Unity and Unreal Engine abandoned deep inheritance trees years ago. A Game Object in Unity is just an empty shell. You give it behavior by *attaching* components to it (HAS-A `Transform`, HAS-A `Collider`, HAS-A `Renderer`).
-3. **Decorators:** The Java I/O library uses composition. `new BufferedReader(new FileReader("data.txt"))`. The `BufferedReader` doesn't inherit from `FileReader`; it *contains* it and enhances its behavior.
+- **Java Input/Output Streams:** The Java I/O library uses composition (via the Decorator pattern). `new BufferedReader(new FileReader("file.txt"))` wraps a file reader to add buffering, rather than using inheritance.
+- **Game Engine Components:** Engines like Unity use Entity-Component-System (ECS) models. Game entities are composed by attaching components (e.g., `Transform`, `RigidBody`, `MeshRenderer`) instead of inheriting from a base `GameObject` class.
+- **UI Frameworks (React/Flutter):** Modern frontend libraries compose interfaces by nesting simple widget elements (e.g., placing `Icon` and `Text` widgets inside a `Button` component) rather than extending parent class components.
 
 ## Pros
-- **Flexibility:** You can swap behaviors at runtime (e.g., swapping a character's weapon component from Sword to Bow).
-- **Prevents Class Explosion:** Instead of creating 100 classes for every possible combination of behaviors (`FlyingSwimmingFireBreathingEnemy`), you create 3 components and assemble them.
-- **Easier Testing:** You can easily mock individual components when testing.
+- **Enforced Encapsulation:** Components are kept private, preventing clients from accessing or modifying internal state.
+- **Dynamic Flexibility:** Components can be swapped dynamically at runtime (e.g., changing a character's weapon component from `Sword` to `Bow`).
+- **Simplified Testing:** Individual components can be isolated and mocked in unit tests.
 
 ## Cons
-- **Boilerplate:** Composition requires more initial setup. You have to create interfaces, component classes, and pass them into constructors, whereas inheritance is just a quick `extends` keyword.
+- **Increased Boilerplate:** Requires writing delegating methods and constructor injection code.
 
 ## Interview questions
 
 ### Beginner
-- **Q: What is the difference between IS-A and HAS-A?**
-  - **A:** "IS-A" represents Inheritance (A Car IS-A Vehicle). "HAS-A" represents Composition (A Car HAS-A Engine).
+- **Q: What is the difference between an "IS-A" and a "HAS-A" relationship?**
+- **A:** "IS-A" represents Inheritance, where a subclass specializes a parent class (e.g., a `Dog` IS-A `Animal`). "HAS-A" represents Composition, where a class contains a reference to another object (e.g., a `Car` HAS-A `Engine`).
 
 ### Intermediate
-- **Q: Why is deep inheritance considered an anti-pattern?**
-  - **A:** Deep inheritance trees suffer from the "Fragile Base Class" problem. A change in the root parent class ripples down and can unexpectedly break behaviors in deeply nested child classes. It also makes the code very hard to read because logic is scattered across multiple file levels.
+- **Q: Why does the Java standard library `java.util.Stack` class violate this design principle?**
+- **A:** The standard `java.util.Stack` class extends `java.util.Vector`, exposing list mutators like `insertElementAt()` and `removeElement()`. This violates encapsulation by allowing clients to bypass the stack's LIFO constraints.
 
 ### Senior
-- **Q: Does this mean we should NEVER use inheritance?**
-  - **A:** No. Inheritance is perfectly fine for pure, strict taxonomies where the IS-A relationship will never be violated (e.g., `CustomException extends Exception`). But for reusing behavior or sharing code, Composition should be the default choice.
+- **Q: What is the "Fragile Base Class" problem, and how does composition solve it?**
+- **A:** The Fragile Base Class problem occurs when modifications to a superclass break subclass behaviors because subclasses depend on the parent's internal state. Composition solves this by keeping component objects private and interacting only through their public interfaces, isolating the containing class from internal changes in the components.
+
+### Staff Engineer
+- **Q: How does the JVM optimize delegated method calls in composition (inlining), and does this close the performance gap with inheritance?**
+- **A:**
+  - **The Optimization:** The JVM's Just-In-Time (JIT) compiler uses **method inlining** to optimize delegated calls. When a method delegates to a component (e.g., `storage.add(item)`), the JIT compiler replaces the method call with the direct bytecodes of the target method, eliminating invocation overhead.
+  - **Inlining Limits:** The JIT compiler can inline methods easily for monomorphic calls (where the target interface has only one active implementation class). If there are multiple active implementations (polymorphism), lookup overhead is higher. Overall, the JIT compiler's optimizations make the performance difference between composition and inheritance negligible for most applications.
 
 ## Common mistakes
-- **Extending utility classes:** Making a `User` class `extend StringUtils` just so the user class can easily use string formatting methods. This is an abuse of inheritance.
+- **Inheriting to reuse a helper method:** Extending a class just to use a utility method, which creates tight coupling.
+- **Exposing internal components:** Providing public getter methods that return references to internal mutable components.
 
 ## Best practices
-- Design your software as Legos. Build small, single-purpose pieces that can be snapped together to form complex objects.
-- If you cannot definitively say "Subclass IS-A Superclass", use Composition.
+- Program to interfaces rather than concrete implementations inside composition models.
+- Mark classes as `final` if they are not designed to be subclassed, protecting them from inheritance misuse.
+- Use constructor injection to pass components to the containing class.
+
+## When NOT to use
+- **Strict Taxonomies:** When designing stable, hierarchical taxonomies where subclasses can always substitute the superclass (e.g., extending `RuntimeException` for custom application errors).
+
+## Comparison with similar concepts
+- **Composition vs Aggregation:**
+  - **Composition:** A strong relationship where the life cycles of the component and container are bound (if the container is destroyed, the component is destroyed).
+  - **Aggregation:** A weaker relationship where the component can exist independently of the container (e.g., a `Department` has a `Professor`).
 
 ## Summary
-"Favor Composition over Inheritance" warns developers against the rigidity of compile-time class hierarchies. By building objects that *contain* behaviors rather than *inheriting* them, developers can create highly modular, flexible systems that easily adapt to changing requirements.
+Favoring composition over inheritance preserves encapsulation and avoids brittle class hierarchies. Assembling classes from interchangeable components keeps codebases modular and easy to extend.
 
 ## Related topics
 - [Inheritance](../../oop-fundamentals/inheritance)
-- [Strategy Pattern](../../../01-design-patterns/behavioral/strategy)
-- [Decorator Pattern](../../../01-design-patterns/structural/decorator)
+- [Liskov Substitution Principle](../../solid-principles/liskov-substitution-principle)
+- [SOLID Principles](../../solid-principles)

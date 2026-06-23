@@ -169,6 +169,106 @@ public class Main {
 }
 ```
 
+## Python implementation
+
+### Bad implementation
+Directly instantiating platform-specific objects scatters conditionals and risks mixing families.
+
+```python
+def render_ui(os_type: str):
+    if os_type == "windows":
+        button = "Windows Button"
+        checkbox = "Windows Checkbox"
+    elif os_type == "mac":
+        button = "Mac Button"
+        # Bug: developer accidentally used wrong family!
+        checkbox = "Windows Checkbox"
+    else:
+        raise ValueError(f"Unknown OS: {os_type}")
+    print(f"Rendering {button} and {checkbox}")
+```
+
+### Best implementation (Abstract Factory)
+Using Python's ABC module and Protocol-based typing for clean abstraction.
+
+```python
+from abc import ABC, abstractmethod
+
+# 1. Abstract Products
+class Button(ABC):
+    @abstractmethod
+    def paint(self) -> str:
+        pass
+
+class Checkbox(ABC):
+    @abstractmethod
+    def paint(self) -> str:
+        pass
+
+# 2. Concrete Products (Windows)
+class WinButton(Button):
+    def paint(self) -> str:
+        return "Rendering Windows Button"
+
+class WinCheckbox(Checkbox):
+    def paint(self) -> str:
+        return "Rendering Windows Checkbox"
+
+# 3. Concrete Products (Mac)
+class MacButton(Button):
+    def paint(self) -> str:
+        return "Rendering Mac Button"
+
+class MacCheckbox(Checkbox):
+    def paint(self) -> str:
+        return "Rendering Mac Checkbox"
+
+# 4. Abstract Factory
+class GUIFactory(ABC):
+    @abstractmethod
+    def create_button(self) -> Button:
+        pass
+
+    @abstractmethod
+    def create_checkbox(self) -> Checkbox:
+        pass
+
+# 5. Concrete Factories
+class WinFactory(GUIFactory):
+    def create_button(self) -> Button:
+        return WinButton()
+
+    def create_checkbox(self) -> Checkbox:
+        return WinCheckbox()
+
+class MacFactory(GUIFactory):
+    def create_button(self) -> Button:
+        return MacButton()
+
+    def create_checkbox(self) -> Checkbox:
+        return MacCheckbox()
+
+# 6. Client Code
+class Application:
+    def __init__(self, factory: GUIFactory):
+        self.button = factory.create_button()
+        self.checkbox = factory.create_checkbox()
+
+    def paint(self):
+        print(self.button.paint())
+        print(self.checkbox.paint())
+
+# Bootstrapping
+import platform
+
+def main():
+    os_name = platform.system().lower()
+    factory = MacFactory() if "darwin" in os_name else WinFactory()
+
+    app = Application(factory)
+    app.paint()  # Renders correctly matched elements!
+```
+
 ## Step-by-step explanation
 1. Identify the families of products (e.g., Windows UI vs. Mac UI).
 2. Extract interfaces for all distinct products making up those families (`Button`, `Checkbox`).
@@ -180,6 +280,8 @@ public class Main {
 1. **Database Drivers:** JDBC or equivalent libraries where an `Abstract Factory` (Connection) returns matched families of objects (`Statement`, `ResultSet`, `PreparedStatement`) specific to MySQL or PostgreSQL.
 2. **Cross-Platform UI Toolkits:** Java AWT/Swing or React Native bridging to iOS/Android native components.
 3. **Theme Engines:** Changing an app from "Dark Mode" to "Light Mode" where a factory ensures all icons, backgrounds, and fonts are fetched from the matched theme family.
+4. **Cloud Provider SDKs:** An `AbstractCloudFactory` returning `Storage`, `Compute`, and `Messaging` services. `AWSFactory` returns S3/EC2/SQS, while `GCPFactory` returns GCS/GCE/Pub-Sub.
+5. **Payment Processing Ecosystems:** A `PaymentFactory` producing matching `Gateway`, `Tokenizer`, and `FraudChecker` objects for Stripe vs. PayPal vs. Razorpay.
 
 ## Pros
 - **Family Compatibility:** You are guaranteed that products extracted from a factory are perfectly compatible with each other.
@@ -195,19 +297,31 @@ public class Main {
 
 ### Beginner
 - **Q: How is Abstract Factory different from Factory Method?**
-- A: Factory Method creates a *single* product using an overriden method in a subclass. Abstract Factory creates a *family* of related products using an object with multiple creation methods.
+- A: Factory Method creates a *single* product using an overridden method in a subclass. Abstract Factory creates a *family* of related products using an object with multiple creation methods.
+
+- **Q: What design problem does Abstract Factory solve that Factory Method cannot?**
+- A: It enforces *family consistency*. Factory Method only guarantees one product per creator. Abstract Factory guarantees that all products from a single factory belong to the same family (e.g., all Windows UI elements together, never mixing Windows and Mac).
 
 ### Intermediate
 - **Q: When would you definitively choose Abstract Factory over other patterns?**
 - A: When my system must be configured with one of multiple families of products, and I need to enforce that objects from different families are not accidentally mixed.
 
+- **Q: How does Abstract Factory relate to the Dependency Inversion Principle?**
+- A: Client code depends on the `AbstractFactory` and `AbstractProduct` interfaces (high-level abstractions), never on concrete implementations. The concrete factories and products are injected at runtime, making the system highly modular and testable.
+
 ### Senior
 - **Q: How does adding a new product type break the Open/Closed Principle in an Abstract Factory?**
 - A: To add a new product (e.g., `DialogBox`), you have to modify the `AbstractFactory` interface to add `createDialogBox()`. Because interfaces force implementation, you must then crack open and modify every existing `ConcreteFactory` to implement this new method, violating the Open/Closed Principle.
 
+- **Q: How can you mitigate the "adding new products" problem in Abstract Factory?**
+- A: Use a generic `create(type)` method with a type registry, or use the Prototype pattern where the factory stores prototypical instances and clones them. In Java, you can also use default methods in interfaces to provide a no-op fallback.
+
 ### Staff Engineer
 - **Q: In modern software, dependency injection (DI) containers are heavily used. Does this make Abstract Factory obsolete?**
 - A: Abstract Factory and DI are highly synergistic, not mutually exclusive. A DI container often *is* a runtime Abstract Factory. However, when you need dynamic instantiation of groups of objects based on runtime data (rather than app-startup injection), you still explicitly implement the Abstract Factory pattern to encapsulate that dynamic resolution cleanly.
+
+- **Q: How would you implement an Abstract Factory that supports runtime addition of new product families without recompilation?**
+- A: Use a registry-based approach where each ConcreteFactory registers itself with a central `FactoryProvider` at startup (via SPI, classpath scanning, or plugin loading). The client asks the `FactoryProvider` for a factory by name/config key. This is how OSGi bundles and Spring profiles effectively implement dynamic Abstract Factories.
 
 ## Common mistakes
 - **Over-engineering:** Using Abstract Factory when you only have one family of products, or when products are completely unrelated and don't need grouping constraints.
@@ -229,6 +343,8 @@ public class Main {
 The Abstract Factory is a robust mechanism for enforcing consistency among groups of related products. While it scales horizontally well (adding new families is easy), it resists vertical scaling (adding new product types is hard). Use it strictly when product compatibility and strict abstraction are hard requirements.
 
 ## Related topics
-- Factory Method
-- Builder
-- Singleton
+- [Factory Method](../factory)
+- [Builder](../builder)
+- [Singleton](../singleton)
+- [Prototype](../prototype)
+- [Strategy](../../behavioral/strategy)

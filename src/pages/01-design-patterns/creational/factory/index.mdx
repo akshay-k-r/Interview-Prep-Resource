@@ -134,6 +134,109 @@ public class SeaLogistics extends Logistics {
 }
 ```
 
+## Python implementation
+
+### Bad implementation
+Conditional creation logic scattered in the client. Adding new transport types requires modifying client code.
+
+```python
+class Truck:
+    def transport(self):
+        return "Delivering by land in a box."
+
+class Ship:
+    def transport(self):
+        return "Delivering by sea in a container."
+
+def deliver(transport_type: str):
+    # Bad: Tight coupling to concrete classes
+    if transport_type == "road":
+        vehicle = Truck()
+    elif transport_type == "sea":
+        vehicle = Ship()
+    else:
+        raise ValueError(f"Unknown type: {transport_type}")
+    print(vehicle.transport())
+```
+
+### Better implementation (Simple Factory)
+Extracts the creation logic into a dedicated factory function, but still relies on conditionals.
+
+```python
+from typing import Protocol
+
+class Transport(Protocol):
+    def transport(self) -> str: ...
+
+class Truck:
+    def transport(self) -> str:
+        return "Delivering by land in a box."
+
+class Ship:
+    def transport(self) -> str:
+        return "Delivering by sea in a container."
+
+def create_transport(transport_type: str) -> Transport:
+    factories = {
+        "road": Truck,
+        "sea": Ship,
+    }
+    if transport_type not in factories:
+        raise ValueError(f"Unknown type: {transport_type}")
+    return factories[transport_type]()
+```
+
+### Best implementation (Factory Method Pattern)
+Uses the ABC module and polymorphism. Adding new transport types requires zero changes to existing code.
+
+```python
+from abc import ABC, abstractmethod
+
+# 1. Product Interface
+class Transport(ABC):
+    @abstractmethod
+    def deliver(self) -> str:
+        pass
+
+# 2. Concrete Products
+class Truck(Transport):
+    def deliver(self) -> str:
+        return "Delivering by land in a box."
+
+class Ship(Transport):
+    def deliver(self) -> str:
+        return "Delivering by sea in a container."
+
+# 3. Creator (Abstract)
+class Logistics(ABC):
+    @abstractmethod
+    def create_transport(self) -> Transport:
+        """Factory method — subclasses decide what to create."""
+        pass
+
+    def plan_delivery(self):
+        """Core business logic uses only abstractions."""
+        transport = self.create_transport()
+        print(transport.deliver())
+
+# 4. Concrete Creators
+class RoadLogistics(Logistics):
+    def create_transport(self) -> Transport:
+        return Truck()
+
+class SeaLogistics(Logistics):
+    def create_transport(self) -> Transport:
+        return Ship()
+
+# Client code — completely decoupled from concrete classes
+def main():
+    logistics: Logistics = RoadLogistics()
+    logistics.plan_delivery()  # Delivering by land in a box.
+
+    logistics = SeaLogistics()
+    logistics.plan_delivery()  # Delivering by sea in a container.
+```
+
 ## Step-by-step explanation
 1. Identify common behaviors across objects you need to create and extract them into a `Product` interface.
 2. Create concrete implementations of this `Product` interface.
@@ -145,6 +248,8 @@ public class SeaLogistics extends Logistics {
 1. **UI Frameworks:** A cross-platform UI framework might have a `Dialog` abstract class. `WindowsDialog` instantiates a `WindowsButton`, while `MacDialog` instantiates a `MacButton`.
 2. **Database Connectors:** An abstract `Database` class has a `createConnection()` method. Subclasses like `MySQLDatabase` and `PostgreSQLDatabase` return their respective connection objects.
 3. **Document Parsers:** A `DocumentProcessor` might have subclasses `XMLProcessor` and `JSONProcessor` which instantiate different parsing engines.
+4. **Payment Gateways:** An `PaymentProcessor` abstract class where `StripeProcessor`, `PayPalProcessor`, and `RazorpayProcessor` each create their own payment handler objects.
+5. **Notification Services:** A `NotificationSender` abstract class where `EmailSender`, `SMSSender`, and `PushNotificationSender` create their respective notification dispatchers.
 
 ## Pros
 - **Loose Coupling:** The code interacts solely with the `Product` interface, ignoring implementation details.
@@ -161,17 +266,29 @@ public class SeaLogistics extends Logistics {
 - **Q: What is the main difference between Simple Factory and Factory Method?**
 - A: Simple Factory is a single class with a big switch statement. Factory Method relies on an abstract class and polymorphism, deferring object creation to its subclasses.
 
+- **Q: What SOLID principle does Factory Method primarily support?**
+- A: The Open/Closed Principle — you can add new product types by creating new Creator subclasses without modifying existing code.
+
 ### Intermediate
 - **Q: How does the Factory Method support the Open/Closed Principle?**
 - A: It allows you to add new Product types by creating new ConcreteCreator subclasses without touching the existing abstract Creator or business logic code.
+
+- **Q: Can a Factory Method return a cached instance instead of always creating a new one?**
+- A: Yes. The Factory Method pattern doesn’t mandate creating a *new* object every time. It can return existing instances from a pool or cache. Java’s `Integer.valueOf()` is a classic example — it caches frequently-used integers.
 
 ### Senior
 - **Q: When would you choose an Abstract Factory over a Factory Method?**
 - A: Factory Method creates a *single* object. Abstract Factory creates *families* of related objects. If my code needs to ensure a UI gets both a WindowsButton and WindowsCheckbox together, I use Abstract Factory.
 
+- **Q: How would you implement a parameterized Factory Method in Java using functional interfaces?**
+- A: Use `Supplier<T>` or `Function<String, T>` to register lightweight factories in a map, avoiding the need for concrete Creator subclasses entirely. Example: `Map<String, Supplier<Transport>> registry` where each entry maps a type string to a lambda like `Truck::new`.
+
 ### Staff Engineer
 - **Q: How does Dependency Injection conceptually relate to the Factory pattern? Can they be used together?**
 - A: Modern DI frameworks (like Spring or Guice) act as ultimate "Factories", eliminating the need for boilerplate factory classes in many contexts. However, Factory Methods are still heavily used *within* DI configurations (e.g., Spring's `@Bean` methods acting as factory methods) to handle complex, dynamic initialization logic that the container can't do natively.
+
+- **Q: In a plugin-based architecture, how does Factory Method enable runtime extensibility?**
+- A: Plugins register their ConcreteCreator classes at runtime (e.g., via Java SPI or a plugin registry). The application core only references the abstract Creator interface. When a plugin is loaded, it registers its factory method, allowing new product types to be created without recompiling or modifying the host application.
 
 ## Common mistakes
 - **Forcing the pattern:** Using a Factory Method for every class creation. If the class structure is not going to expand, a simple `new Object()` or Simple Factory is much better.
@@ -194,6 +311,8 @@ public class SeaLogistics extends Logistics {
 The Factory Method pattern manages object instantiation by providing an interface for creating objects, leaving the exact choice of class to its subclasses. It promotes loose coupling and clean scalability.
 
 ## Related topics
-- Singleton
-- Abstract Factory
-- Builder
+- [Singleton](../singleton)
+- [Abstract Factory](../abstract-factory)
+- [Builder](../builder)
+- [Strategy](../../behavioral/strategy)
+- [Open/Closed Principle](../../../03-lld/solid/open-closed-principle)

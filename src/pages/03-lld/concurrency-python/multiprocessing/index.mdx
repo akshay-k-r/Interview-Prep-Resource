@@ -1,0 +1,293 @@
+# Python Multiprocessing
+
+## Introduction
+Python's `multiprocessing` module allows developers to bypass CPython's Global Interpreter Lock (GIL) by spawning separate operating system processes, each with its own private memory space and Python interpreter instance. This enables true parallel execution across multi-core CPU architectures, making it the standard choice for CPU-bound tasks in Python.
+
+---
+
+## Problem Statement
+When executing CPU-bound computations (such as image rendering, data parsing, or heavy mathematical operations) in a standard Python thread pool, we run into the GIL bottleneck, limiting execution to a single core. To scale, we must run tasks in separate processes. However, because processes have isolated memory spaces, they cannot share variables directly. We need secure mechanisms for Inter-Process Communication (IPC) and synchronized shared memory.
+
+---
+
+## Why this exists
+To unlock multi-core parallelism in Python. Since CPython cannot execute threads in parallel due to reference-counting requirements, the operating system's process model is used instead. By duplicating process spaces, we gain isolated execution contexts that can run simultaneously on different CPU cores.
+
+---
+
+## Real-world analogy
+Think of an office with multiple branch offices:
+- **Multithreading:** Employees working inside the same office. They share desks and filing cabinets (memory). If one employee makes a mistake, they can corrupt the shared space (race condition).
+- **Multiprocessing:** Creating completely separate branch offices in different cities. Each office has its own building, desks, and resources (isolated memory). If Branch A burns down (crashes), Branch B continues working unaffected.
+- **IPC:** Since the branches cannot walk into each other's offices to read files, they must send documents via courier mail (Pipes / Queues) or set up a shared digital database (Shared Memory).
+
+---
+
+## Definition
+- **Process Isolation:** The security and stability mechanism where the operating system prevents one process from reading or writing to another process's private memory space.
+- **Inter-Process Communication (IPC):** Protocols and data structures (such as pipes, sockets, or queues) that allow isolated processes to exchange messages and state safely.
+- **Shared Memory:** A region of memory that has been mapped into the address space of multiple processes, enabling fast, direct data exchanges without message-passing overhead.
+
+---
+
+## Key concepts
+1. **Process Creation Mechanisms:**
+   - **Fork (Unix/Linux):** Clones the parent process, including its memory state, using copy-on-write optimizations. Very fast, but can inherit locks, leading to deadlocks.
+   - **Spawn (Windows/macOS):** Starts a fresh Python interpreter process from scratch. Safer, but slower because it must reload modules and serialize arguments.
+2. **Inter-Process Communication (IPC) Primitives:**
+   - `multiprocessing.Queue`: A thread- and process-safe FIFO queue implemented using pipes and locks.
+   - `multiprocessing.Pipe`: A fast, bidirectional connection link between two processes.
+3. **Shared State Primitives:**
+   - `Value` / `Array`: Shared memory allocations using C-compatible types (`ctypes`) under the hood.
+   - `Manager`: Spawns a server process that hosts Python objects (lists, dicts) and allows other processes to access them using proxies, which is flexible but slower due to IPC serialization.
+
+---
+
+## Internal working / Mermaid diagram
+
+### Process Isolation vs Inter-Process Communication (IPC)
+
+```mermaid
+graph TD
+    subgraph Parent Process Space
+        P_Var[Global Var: X = 10]
+        P_Queue[multiprocessing.Queue]
+    end
+    
+    subgraph Child Process 1
+        direction TB
+        C1_Var[Isolated Copy: X = 10]
+        C1_Run[Modify X = 20] --> C1_Var
+    end
+    
+    subgraph Child Process 2
+        direction TB
+        C2_Var[Isolated Copy: X = 10]
+    end
+    
+    Parent Process Space -->|Spawn/Fork| Child Process 1
+    Parent Process Space -->|Spawn/Fork| Child Process 2
+    
+    Child Process 1 -->|Send Msg: X=20| P_Queue
+    P_Queue -->|Read Msg| Child Process 2
+```
+
+---
+
+## Python implementation
+
+### 1. Bad Implementation: Sharing Global Variables Across Processes
+Attempting to update a shared global variable inside worker processes. Because processes have isolated memory spaces, changes made in child processes do not update the parent's memory.
+
+```python
+import multiprocessing
+
+# Global variable
+shared_counter = 0
+
+def worker():
+    global shared_counter
+    # Modifies local copy of the variable in child process memory
+    shared_counter += 1 
+
+# CRITICAL BUG: Process isolation prevents child processes from writing to the parent's memory.
+# The parent's counter remains 0.
+def bad_process_counter():
+    p1 = multiprocessing.Process(target=worker)
+    p2 = multiprocessing.Process(target=worker)
+    
+    p1.start(); p2.start()
+    p1.join(); p2.join()
+    
+    # Expected: 2, Actual: 0
+    print(f"Bad Shared Counter Value: {shared_counter}")
+```
+
+### 2. Better Implementation: Shared Value without Synchronization
+Using `multiprocessing.Value` to allocate shared memory, but failing to use locks, causing race conditions and lost updates during concurrent writes.
+
+```python
+import multiprocessing
+import time
+
+def worker(shared_val):
+    for _ in range(1000):
+        # BUG: += 1 is not atomic.
+        # Multiple processes can read and write concurrently, causing race conditions.
+        shared_val.value += 1 
+
+# Better: Uses shared memory, but lacks synchronization.
+def better_unsynced_counter():
+    # 'i' represents signed integer type in ctypes
+    shared_val = multiprocessing.Value('i', 0)
+    
+    p1 = multiprocessing.Process(target=worker, args=(shared_val,))
+    p2 = multiprocessing.Process(target=worker, args=(shared_val,))
+    
+    p1.start(); p2.start()
+    p1.join(); p2.join()
+    
+    # Expected: 2000, Actual: Unpredictable (e.g. 1432)
+    print(f"Better Unsynced Counter Value: {shared_val.value}")
+```
+
+### 3. Best Implementation: Synchronized Shared Value and Queue Pipelines
+An optimized implementation using `multiprocessing.Value` protected by a `multiprocessing.Lock` to guarantee atomic operations, along with a `multiprocessing.Queue` to distribute tasks safely.
+
+```python
+import multiprocessing
+import time
+
+def counter_worker(shared_val, lock):
+    for _ in range(1000):
+        # O(1) lock synchronization prevents race conditions
+        with lock:
+            shared_val.value += 1
+
+def pipeline_worker(task_queue, result_queue):
+    while True:
+        task = task_queue.get()
+        if task is None: # Shutdown signal
+            break
+        # CPU-bound task simulation
+        result = task * task 
+        result_queue.put((task, result))
+
+# TIME COMPLEXITY: O(N) tasks parallelized across K CPU cores
+# SPACE COMPLEXITY: O(K) process overhead
+def best_multiprocessing_pipeline():
+    # 1. Synchronized Shared Counter
+    lock = multiprocessing.Lock()
+    shared_val = multiprocessing.Value('i', 0)
+    
+    p1 = multiprocessing.Process(target=counter_worker, args=(shared_val, lock))
+    p2 = multiprocessing.Process(target=counter_worker, args=(shared_val, lock))
+    p1.start(); p2.start()
+    p1.join(); p2.join()
+    print(f"Best Synced Counter Value: {shared_val.value}") # Guarantees 2000
+
+    # 2. Process-Safe Queue Pipeline
+    task_queue = multiprocessing.Queue()
+    result_queue = multiprocessing.Queue()
+    
+    # Spawns workers
+    workers = [multiprocessing.Process(target=pipeline_worker, args=(task_queue, result_queue)) for _ in range(2)]
+    for w in workers:
+        w.start()
+        
+    # Enqueue tasks
+    for i in range(5):
+        task_queue.put(i)
+        
+    # Send shutdown signals
+    for _ in range(2):
+        task_queue.put(None)
+        
+    for w in workers:
+        w.join()
+        
+    # Print results
+    while not result_queue.empty():
+        task, res = result_queue.get()
+        print(f"Task Input: {task} | Parallel Process Result: {res}")
+```
+
+---
+
+## Step-by-step explanation
+1. **Isolated Address Spaces**: In `bad_process_counter`, when `p1.start()` is called, the OS duplicates the parent's memory. The variable `shared_counter` inside the child process is a copy. The child process increments its copy to 1, while the parent's variable remains 0.
+2. **Unsynchronized C-types**: In `better_unsynced_counter`, `Value('i', 0)` allocates shared memory. However, the Python operation `shared_val.value += 1` requires loading the value, adding 1, and saving it back. If Process 1 is preempted mid-operation, Process 2 reads the stale value, causing data loss.
+3. **Lock Protection (Best)**: In `best_multiprocessing_pipeline`, `with lock` ensures that only one process can access the shared memory region at a time.
+4. **Queue IPC Pipeline**: The `multiprocessing.Queue` uses a pipe internally. When a task is added via `put()`, Python serializes (pickles) the object, sends the bytes through the pipe, and the child process deserializes it back to an object, ensuring safe thread- and process-safe message exchange.
+
+---
+
+## Multiple real-world examples
+1. **CPU-bound Data Processing:** Running heavy image processing operations (e.g. OpenCV filters) in parallel worker processes to maximize CPU utilization.
+2. **Machine Learning Model Training:** Distributing training batches across multiple CPU/GPU worker processes (e.g. PyTorch DataLoader).
+3. **Gunicorn Web Server:** Utilizing a master process that manages multiple worker processes, each handling client HTTP connections independently.
+
+---
+
+## Pros
+- **True Parallelism:** Bypasses the GIL, utilizing all available CPU cores.
+- **Fault Isolation:** A crashed worker process does not affect other processes or the parent application.
+- **Process Protection:** Memory isolation prevents accidental state corruption across workers.
+
+---
+
+## Cons
+- **High Memory Footprint:** Spawning processes requires duplicating resources, consuming significantly more RAM than threads.
+- **Slow Spawning:** Creating processes is slow (especially using `spawn` on Windows/macOS).
+- **Serialization Overhead:** Data passed through Queues or Pipes must be pickled and unpickled, adding CPU overhead.
+
+---
+
+## Interview questions
+
+### Beginner
+- **Q: How does multiprocessing differ from multithreading in Python?**
+  - **A:** 
+    - **Multiprocessing:** Spawns separate processes with their own memory spaces and Python interpreters. It bypasses the GIL to run CPU-bound tasks in parallel on multi-core systems, but has high memory overhead.
+    - **Multithreading:** Spawns threads within the same process, sharing its memory space. It is restricted by the GIL to a single core, making it effective only for I/O-bound tasks.
+
+### Intermediate
+- **Q: What is the difference between the "fork" and "spawn" start methods in Python multiprocessing?**
+  - **A:** 
+    - **Fork:** Clones the parent process using OS-level copy-on-write memory mapping. It is fast because it inherits all imported modules and variables. Available only on Unix/Linux systems.
+    - **Spawn:** Starts a fresh Python process from scratch, initializing a new interpreter. It is slower because it must reload modules, but it is safer since it does not inherit lock states, avoiding deadlocks. Default on Windows and macOS.
+
+### Senior
+- **Q: Why does sharing mutable Python objects (like lists or dicts) using a `multiprocessing.Manager` have lower performance compared to `multiprocessing.Array`?**
+  - **A:** 
+    - `multiprocessing.Array` allocates raw, contiguous C-compatible shared memory (`ctypes`) that processes can read and write directly without serialization.
+    - `multiprocessing.Manager` spawns a dedicated server process to host the mutable Python objects. When other processes access these objects, they use proxy objects. Every modification or read requires serializing data (pickling), sending it over a socket or pipe to the manager process, executing the change, and returning the response. This message-passing adds high latency and CPU overhead.
+
+### Staff Engineer
+- **Q: Explain the Copy-on-Write (CoW) optimization used by the operating system during a fork() call, and how it impacts memory usage in Python.**
+  - **A:** 
+    - **CoW Optimization:** When a process is forked on Unix systems, the OS does not copy the physical memory pages. Instead, it creates duplicate page tables for the child process pointing to the same physical memory pages, marking them as read-only.
+    - **Triggering Copies:** When either process attempts to write to a page, a page fault occurs. The OS then duplicates that specific page in memory and updates the page table to point to the new copy.
+    - **Python Impact:** In Python, reference counting modifies memory pages constantly (even during read-only operations like dictionary lookups or garbage collection sweeps). As a result, Python processes quickly trigger copies of memory pages, reducing the memory savings of Copy-on-Write over time.
+
+---
+
+## Common mistakes
+- **Sharing normal globals:** Assuming global variables are shared across processes.
+- **Passing un-pickleable objects:** Attempting to send database connections, open files, or lambda functions through queues (which raises `PicklingError` exceptions).
+- **Neglecting process joins:** Failing to call `.join()` on worker processes, leaving them as zombie processes in the OS.
+
+---
+
+## Best practices
+- **Use Process Pools:** Avoid raw process creation in loops; use reuse-pools (`multiprocessing.Pool` or `ProcessPoolExecutor`).
+- **Minimize IPC size:** Send small task payloads (e.g. database IDs or file paths) through queues rather than large objects.
+- **Close Queues:** Explicitly call `queue.close()` and `queue.join_thread()` to prevent memory leaks and process hangs during shutdown.
+
+---
+
+## When NOT to use
+- **I/O-Bound Workloads:** For tasks that spend most time waiting (e.g. network scrapers), do not use multiprocessing. The memory and startup overhead of processes is unnecessary. Use Multithreading or Asyncio instead.
+
+---
+
+## Comparison of IPC Mechanisms
+
+| Primitive | Queue | Pipe | Shared Memory (Value/Array) | Manager |
+| :--- | :--- | :--- | :--- | :--- |
+| **Data Exchange** | Message Passing | Message Passing | Direct Access | Proxy Operations |
+| **Bidirectional** | No (FIFO) | Yes | Yes | Yes |
+| **Serialization** | Yes (Pickle) | Yes (Pickle) | No (Direct C-types) | Yes |
+| **Speed** | Medium | Fast | Extremely Fast | Slow |
+
+---
+
+## Summary
+Python Multiprocessing enables true parallel execution across multi-core systems by bypassing the GIL using isolated process spaces. Processes exchange data safely using IPC channels (Queues/Pipes) or synchronized shared memory (Value/Array).
+
+---
+
+## Related topics
+- [Threads & GIL](../threads-gil)
+- [Asyncio & Coroutines](../asyncio-coroutines)
+- [Pools & Futures](../pools-futures)

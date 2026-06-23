@@ -1,137 +1,246 @@
 # Dependency Injection (DI)
 
 ## Introduction
-Dependency Injection (DI) is a software design pattern heavily used in modern frameworks (like Spring, Angular, and .NET Core) to implement Inversion of Control (IoC) and resolve dependencies. It is the practical implementation of the SOLID Dependency Inversion Principle.
+Dependency Injection (DI) is a software design pattern used to implement Inversion of Control (IoC). It is the practical implementation of the SOLID Dependency Inversion Principle, delegating the responsibility of object instantiation and dependency resolution to an external coordinator.
 
 ## Problem Statement
-Imagine a `Car` class that needs an `Engine` to function. 
-If the `Car` class creates the engine itself (`Engine engine = new V8Engine();` inside the Car's constructor), the Car is now permanently hardcoded to only ever use a V8 Engine. 
-If you want to build an Electric Car, or if you want to test the Car using a Fake Engine, you cannot do it without modifying the `Car`'s source code. The classes are tightly coupled.
+When a class instantiates its own dependencies directly (e.g., a `BillingService` doing `new StripePaymentProcessor(new StripeConfig("API_KEY"))` in its constructor), the class becomes tightly coupled to that specific implementation. If the payment gateway changes (e.g., migrating to PayPal) or if you need to run unit tests without hitting live payment APIs, you must modify the service's source code, violating the Open/Closed Principle.
 
 ## Why this exists
-To create loosely coupled code. By removing the responsibility of *creating* objects from the classes that *use* them, we can swap out components effortlessly, making the system highly testable and flexible.
+To create loosely coupled code by separating object configuration and wiring from business logic execution. This allows developers to swap components and inject mocks during unit testing without modifying the client class.
 
 ## Real-world analogy
-Consider a highly skilled Surgeon (the Class) and a Scalpel (the Dependency).
-- **Without DI:** The Surgeon has to forge the steel, sharpen the blade, and build their own scalpel before performing surgery. If they need a laser scalpel, they don't know how to build it.
-- **With DI:** The Surgeon simply walks into the operating room and holds out their hand. A nurse (the DI Container / Injector) hands the Surgeon the exact scalpel they need for that specific operation. The Surgeon just focuses on surgery.
+Consider a **surgeon** (the dependent class) performing an operation.
+- **Without DI:** The surgeon must forge the steel, sharpen the blade, and build their own scalpel before beginning the surgery.
+- **With DI:** The surgeon enters the operating room. A nurse (the DI injector) hands the surgeon the exact scalpel (dependency) required for that operation. The surgeon focuses on performing the surgery, unaware of how the scalpel was manufactured.
+
+Another analogy is a **car radio**. The dashboard provides a standard slot (interface). You plug a radio component (dependency) into the slot. You do not weld the radio directly into the car's engine block (hardcoding dependencies).
 
 ## Definition
-A technique in which an object receives other objects that it depends on, rather than creating them itself.
+Dependency Injection is a technique where an object receives its dependencies from an external source (an injector or container) rather than creating them itself.
 
 ## Key concepts
-- **Dependency:** An object that another object needs to function.
-- **Injection:** The passing of a dependency to a dependent object.
-- **IoC Container:** A framework (like Spring) that automatically manages the creation, wiring, and injection of dependencies across the entire application lifecycle.
+- **Dependency:** An external service or object required by a class to perform its task.
+- **Client (Dependent):** The class that depends on the external object.
+- **Injector (Container):** The component that instantiates and injects the dependencies into the client.
+- **Constructor Injection:** Passing dependencies through the class constructor. This is the recommended approach as it guarantees the class is fully initialized.
+- **Setter Injection:** Passing dependencies through setter methods, useful for optional dependencies.
+- **Inversion of Control (IoC):** The design principle of delegating control of application flow and object creation to a framework.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    subgraph Hardcoded Tight Coupling
+        Client1[BillingService] -->|Direct Instantiation| Concrete[StripeProcessor]
+    end
+
+    subgraph Dependency Injection Wiring
+        Container[DI Container / Injector] -->|1. Instantiates| Stripe[StripeProcessor]
+        Container -->|2. Injects into constructor| Client2[BillingService]
+        Client2 -->|3. Calls via contract| Interface[PaymentProcessor Interface]
+        Stripe -.->|Implements| Interface
+    end
+```
 
 ## Python/Java implementation
 
-### Bad Implementation (Hardcoded Dependency)
+### Bad implementation
+*A service that directly instantiates its concrete payment client inside its constructor, creating tight coupling and making it impossible to test without live API credentials.*
+
 ```java
-class V8Engine {
-    public void start() { System.out.println("V8 Engine roaring!"); }
-}
+package bad;
 
-class Car {
-    private V8Engine engine;
+class StripeProcessor {
+    private final String apiKey;
 
-    public Car() {
-        // VIOLATION: The Car is tightly coupled to V8Engine.
-        // It builds its own dependency.
-        this.engine = new V8Engine(); 
+    public StripeProcessor(String apiKey) {
+        this.apiKey = apiKey;
     }
 
-    public void drive() {
-        engine.start();
-        System.out.println("Car is moving.");
+    public void process(double amount) {
+        System.out.println("Processing $" + amount + " using Stripe API key: " + apiKey);
+    }
+}
+
+public class BillingService {
+    // Violates DIP/DI: Hardcoded concrete class dependency
+    private final StripeProcessor paymentProcessor;
+
+    public BillingService() {
+        // Service manages its own configuration and instantiation
+        this.paymentProcessor = new StripeProcessor("live_sk_stripe_12345");
+    }
+
+    public void completeOrder(double total) {
+        paymentProcessor.process(total);
     }
 }
 ```
 
-### Better Implementation (Constructor Injection)
+### Better implementation
+*Using the Service Locator pattern to look up dependencies from a global registry. While this avoids direct instantiation, it hides class dependencies and makes testing difficult.*
+
 ```java
-// 1. Create an abstraction
-interface Engine {
-    void start();
+package better;
+
+import java.util.HashMap;
+import java.util.Map;
+
+interface PaymentProcessor {
+    void process(double amount);
 }
 
-class V8Engine implements Engine {
-    public void start() { System.out.println("V8 Engine roaring!"); }
+class StripeProcessor implements PaymentProcessor {
+    public void process(double amount) { System.out.println("Processing Stripe: " + amount); }
 }
 
-class ElectricEngine implements Engine {
-    public void start() { System.out.println("Electric Engine humming quietly."); }
+// Service Locator Registry: Hides class contracts and creates global state issues
+class ServiceLocator {
+    private static final Map<String, Object> services = new HashMap<>();
+
+    public static void register(String name, Object service) { services.put(name, service); }
+    public static Object get(String name) { return services.get(name); }
 }
 
-// 2. The class RECEIVES its dependency
-class Car {
-    private Engine engine;
+class BillingService {
+    private final PaymentProcessor paymentProcessor;
 
-    // DEPENDENCY INJECTION via Constructor
-    public Car(Engine engine) {
-        this.engine = engine;
+    public BillingService() {
+        // Hides dependencies: You cannot tell what this service needs without reading the constructor code
+        this.paymentProcessor = (PaymentProcessor) ServiceLocator.get("paymentProcessor");
     }
 
-    public void drive() {
-        engine.start();
-        System.out.println("Car is moving.");
-    }
-}
-
-// 3. The Injector (Main method or Framework) handles the wiring
-public class Main {
-    public static void main(String[] args) {
-        // We can inject ANY type of engine!
-        Engine myEngine = new ElectricEngine();
-        Car myCar = new Car(myEngine); 
-        myCar.drive();
+    public void completeOrder(double total) {
+        paymentProcessor.process(total);
     }
 }
 ```
 
-## Types of Dependency Injection
-1. **Constructor Injection (Recommended):** Dependencies are provided through the class constructor. Guarantees the object is fully initialized and valid before use. Allows fields to be marked `final/readonly`.
-2. **Setter Injection:** Dependencies are provided through setter methods. Useful for optional dependencies that can be changed at runtime, but leaves the object in a potentially uninitialized state right after instantiation.
-3. **Field Injection (Avoid):** Frameworks (like Spring) use reflection to directly inject into private fields (e.g., `@Autowired private Engine engine;`). Highly discouraged today because it makes the class impossible to instantiate in Unit Tests without the heavy framework.
+### Best implementation
+*Constructor-based Dependency Injection. The service depends on the `PaymentProcessor` interface and receives the instance via its constructor, making it loosely coupled and testable.*
+
+```java
+package best;
+
+import java.util.Objects;
+
+// 1. Interface defining the contract
+interface PaymentProcessor {
+    void process(double amount);
+}
+
+// 2. Concrete implementations
+class StripeProcessor implements PaymentProcessor {
+    private final String apiKey;
+
+    public StripeProcessor(String apiKey) {
+        this.apiKey = Objects.requireNonNull(apiKey);
+    }
+
+    @Override
+    public void process(double amount) {
+        System.out.println("Stripe processing: " + amount);
+    }
+}
+
+class PayPalProcessor implements PaymentProcessor {
+    @Override
+    public void process(double amount) {
+        System.out.println("PayPal processing: " + amount);
+    }
+}
+
+// 3. Client service receiving dependencies via Constructor Injection
+public class BillingService {
+    private final PaymentProcessor paymentProcessor; // Loose coupling
+
+    // Constructor Injection: Explicitly declares required dependencies
+    public BillingService(PaymentProcessor paymentProcessor) {
+        this.paymentProcessor = Objects.requireNonNull(paymentProcessor, "Processor cannot be null");
+    }
+
+    public void completeOrder(double total) {
+        paymentProcessor.process(total);
+    }
+}
+
+// 4. Test environment (Injecting Mock/Stub)
+class MockProcessor implements PaymentProcessor {
+    public double processedAmount = 0;
+
+    @Override
+    public void process(double amount) {
+        this.processedAmount = amount; // Capture without network calls
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Define the Interface:** We create the `PaymentProcessor` interface to define the method signature `process(double amount)`.
+2. **Implement Senders:** We implement concrete strategies like `StripeProcessor` and `PayPalProcessor`.
+3. **Decouple the Client Service:** We modify `BillingService` to accept the `PaymentProcessor` interface in its constructor.
+4. **Wire Dependencies:** We inject the appropriate implementation instance when constructing `BillingService`, keeping it decoupled.
 
 ## Multiple real-world examples
-1. **Spring Boot (Java):** You annotate a class with `@Service`. In its constructor, you require a `UserRepository`. When the app starts, Spring automatically finds the `UserRepository`, creates it, and injects it into your Service.
-2. **Unit Testing:** You have an `OrderService` that depends on a `PaymentGateway`. During testing, you don't want to hit the real Stripe API. Because of DI, you can create a `MockPaymentGateway` and inject it into the `OrderService`. The service tests run successfully without any network calls.
-3. **Angular (Frontend):** Services (like `HttpClient` or `Router`) are injected into UI Components via their constructors, heavily relying on TypeScript's DI container.
+- **Spring Framework:** Uses annotations like `@Autowired` and `@Component` to manage class dependencies and wire them at runtime.
+- **JUnit Testing:** Injecting mock objects (e.g., using Mockito `@Mock` annotations) to test service logic in isolation.
+- **Frontend Frameworks (Angular):** Components receive services (like `HttpClient`) via constructor injection managed by Angular's DI container.
 
 ## Pros
-- **Unit Testing:** Classes become trivially easy to mock and test.
-- **Decoupling:** Classes are oblivious to *how* their dependencies are created.
-- **Single Responsibility:** Classes focus purely on their business logic, offloading object creation to the framework.
+- **Improved Testability:** Simpler to isolate and mock dependencies, avoiding live network calls or database writes in tests.
+- **Decoupled Code:** Client services are decoupled from component configuration and instantiation logic.
+- **Single Responsibility:** Classes focus purely on business logic rather than managing dependencies.
 
 ## Cons
-- **Learning Curve:** For beginners, magic DI frameworks (like Spring or Dagger) can obscure the flow of execution. You don't see `new Database()` anywhere, making it hard to trace where objects come from.
-- **Configuration Overhead:** Setting up DI containers and modules can require significant boilerplate in languages that don't have built-in framework support.
+- **Wiring Complexity:** Requires an external system (like a DI container) to construct objects and manage their lifecycles.
+- **Implicit Flow:** For beginners, DI containers can make class flows difficult to trace as objects are wired automatically.
 
 ## Interview questions
 
 ### Beginner
 - **Q: What is Dependency Injection?**
-  - **A:** It is a pattern where an object receives its dependencies from the outside (usually via its constructor) rather than creating them itself using the `new` keyword.
+- **A:** Dependency Injection is a pattern where an object receives its dependencies from the outside rather than constructing them itself using the `new` keyword.
 
 ### Intermediate
 - **Q: Why is Constructor Injection preferred over Field Injection?**
-  - **A:** Constructor injection clearly defines the mandatory dependencies required for a class to function. It allows you to make the fields immutable (`final`), and it makes the class easy to instantiate in pure unit tests without needing a reflection framework. Field injection hides dependencies and makes testing difficult.
+- **A:** Constructor Injection clearly declares mandatory dependencies, allows fields to be marked `final` for immutability, and simplifies manual instantiation in unit tests without requiring a reflection framework.
 
 ### Senior
-- **Q: What is the difference between Dependency Injection and Inversion of Control (IoC)?**
-  - **A:** IoC is the broader principle that the custom-written portions of a computer program receive the flow of control from a generic framework. DI is a specific *implementation* of IoC regarding how object dependencies are resolved.
+- **Q: Compare the Dependency Injection pattern with the Service Locator pattern.**
+- **A:**
+  - **Dependency Injection:** Dependencies are explicitly declared in the constructor, making class contracts transparent.
+  - **Service Locator:** Dependencies are retrieved internally from a global registry, hiding class contracts and introducing global state issues that make testing harder.
+
+### Staff Engineer
+- **Q: How do you resolve circular dependencies during object wiring in DI containers?**
+- **A:** Circular dependencies (where Class A depends on Class B, and Class B depends on Class A) indicate poor design. Resolve them by:
+  1. **Refactoring Code:** Extract the shared logic causing the cycle into a third class (e.g., Class C).
+  2. **Using Setter/Field Injection:** Switch one dependency to setter injection to allow the container to instantiate the objects before wiring.
+  3. **Using Lazy Proxies:** Configure the DI container to inject a lazy proxy for one of the dependencies, delaying resolution until the method is called.
 
 ## Common mistakes
-- **Service Locator Pattern:** Passing the entire DI Container into a class so it can "ask" for dependencies (`container.get(Engine.class)`). This hides the class's actual dependencies and tightly couples it to the framework container.
+- **Injecting Data Transfer Objects (DTOs):** Passing simple data carriers (like a `User` object) via DI containers rather than instantiating them directly.
+- **Using Field Injection (`@Autowired`):** Hiding dependencies and complicating manual instantiation in unit tests.
 
 ## Best practices
-- Use Constructor Injection for mandatory dependencies.
-- Use Interfaces for the types being injected, not concrete classes.
+- Use Constructor Injection for mandatory dependencies and Setter Injection for optional ones.
+- Program to interfaces rather than concrete classes.
+- Avoid passing the DI container itself into classes (Service Locator anti-pattern).
+
+## When NOT to use
+- **Simple, Non-Configurable Utilities:** If a utility class (like a math helper) has no external dependencies and is not mockable, standard static methods are preferred.
+
+## Comparison with similar concepts
+- **DIP vs DI vs IoC:**
+  - **DIP:** The design principle advising dependencies on interfaces rather than details.
+  - **IoC:** The broad principle of delegating application flow to a framework.
+  - **DI:** The design pattern used to pass dependencies into objects.
 
 ## Summary
-Dependency Injection is the practical application of building modular, testable software. By delegating the creation and wiring of objects to external injectors or frameworks, developers build systems out of interchangeable, loosely coupled components.
+Dependency Injection decouples class logic from dependency lifecycle management. Injecting interface implementations via constructors improves testability and keeps codebases flexible.
 
 ## Related topics
-- Dependency Inversion Principle
-- Unit Testing / Mocking
+- [Dependency Inversion Principle](../../solid-principles/dependency-inversion-principle)
+- [Unit Testing & Mocking](../../java/exception-handling)
+- [SOLID Principles](../../solid-principles)

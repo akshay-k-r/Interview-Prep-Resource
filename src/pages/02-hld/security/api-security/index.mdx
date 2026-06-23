@@ -48,6 +48,171 @@ graph TD
     API_A --"Parameterized Query"--> DB
 ```
 
+## Python/Java implementation
+
+Below is a Java simulation illustrating how API security vulnerabilities are introduced and remediated.
+
+### Bad implementation
+*Vulnerable to Mass Assignment (binding raw HTTP params directly to database entities), lacking rate limiting, and exposing internal stack traces to clients.*
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// BAD: Mass Assignment, no rate limiting, exposing stack traces
+public class VulnerableApiController {
+    private final Map<String, UserAccount> db = new HashMap<>();
+
+    public String updateProfile(String userId, Map<String, Object> httpParameters) {
+        try {
+            UserAccount account = db.get(userId);
+            
+            // VULNERABILITY: Mass Assignment. Blindly copying all parameters to the database object.
+            // Attacker can pass "role" = "ADMIN" or "balance" = 100000.0
+            if (httpParameters.containsKey("role")) {
+                account.setRole((String) httpParameters.get("role"));
+            }
+            if (httpParameters.containsKey("name")) {
+                account.setName((String) httpParameters.get("name"));
+            }
+            
+            db.put(userId, account);
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            // VULNERABILITY: Exposing full internal database stack trace to client
+            return "{\"status\":\"error\", \"debug\":" + e.toString() + "}";
+        }
+    }
+}
+
+class UserAccount {
+    private String name;
+    private String role; // "USER" or "ADMIN"
+    
+    public void setName(String name) { this.name = name; }
+    public void setRole(String role) { this.role = role; }
+}
+```
+
+### Better implementation
+*Mitigating Mass Assignment using a strict Data Transfer Object (DTO) containing only safe-to-edit fields.*
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+// BETTER: Using a strict DTO and sanitizing exceptions
+public class DtoApiController {
+    private final Map<String, UserAccount> db = new HashMap<>();
+
+    public String updateProfile(String userId, UpdateProfileRequest requestDto) {
+        try {
+            UserAccount account = db.get(userId);
+            
+            // SAFE: Only bind explicit, validated properties from DTO
+            account.setName(requestDto.getName());
+            db.put(userId, account);
+            
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            // SAFE: Do not leak stack trace or implementation details
+            return "{\"status\":\"error\", \"message\":\"An unexpected error occurred.\"}";
+        }
+    }
+}
+
+// Strict Data Transfer Object
+class UpdateProfileRequest {
+    private String name;
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+```
+
+### Best implementation
+*Adding a robust API Gateway Layer with a thread-safe Token Bucket Rate Limiter, strict DTO binding, and secure exception handlers.*
+
+```java
+import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+// BEST: Rate Limiter Middleware + DTO + Secure API Handler
+public class SecuredGatewayController {
+    private final TokenBucketRateLimiter rateLimiter = new TokenBucketRateLimiter(100, 10); // 100 max, refill 10/sec
+    private final DtoApiController profileController = new DtoApiController();
+
+    public ApiResponse handleRequest(String clientIp, String userId, UpdateProfileRequest payload) {
+        // 1. Rate Limiting Check at Gateway
+        if (!rateLimiter.allowRequest(clientIp)) {
+            return new ApiResponse(429, "{\"error\":\"Too Many Requests\"}");
+        }
+
+        // 2. Delegate to Secure Controller using strict DTO
+        try {
+            String jsonResult = profileController.updateProfile(userId, payload);
+            return new ApiResponse(200, jsonResult);
+        } catch (Exception e) {
+            // 3. Centralized Sanitized Error Handling
+            return new ApiResponse(500, "{\"error\":\"Internal Server Error\"}");
+        }
+    }
+}
+
+// Thread-Safe Token Bucket Rate Limiter
+class TokenBucketRateLimiter {
+    private final double maxBucketSize;
+    private final double refillRatePerSecond;
+    private final ConcurrentHashMap<String, Bucket> clientBuckets = new ConcurrentHashMap<>();
+
+    public TokenBucketRateLimiter(double maxBucketSize, double refillRatePerSecond) {
+        this.maxBucketSize = maxBucketSize;
+        this.refillRatePerSecond = refillRatePerSecond;
+    }
+
+    public boolean allowRequest(String clientId) {
+        Bucket bucket = clientBuckets.computeIfAbsent(clientId, k -> new Bucket(maxBucketSize));
+        return bucket.consume(1, refillRatePerSecond, maxBucketSize);
+    }
+
+    private static class Bucket {
+        private double tokens;
+        private Instant lastRefillTime;
+
+        public Bucket(double maxTokens) {
+            this.tokens = maxTokens;
+            this.lastRefillTime = Instant.now();
+        }
+
+        public synchronized boolean consume(double amount, double refillRate, double maxCapacity) {
+            refill(refillRate, maxCapacity);
+            if (tokens >= amount) {
+                tokens -= amount;
+                return true;
+            }
+            return false;
+        }
+
+        private void refill(double refillRate, double maxCapacity) {
+            Instant now = Instant.now();
+            double elapsedSeconds = (now.toEpochMilli() - lastRefillTime.toEpochMilli()) / 1000.0;
+            tokens = Math.min(maxCapacity, tokens + (elapsedSeconds * refillRate));
+            lastRefillTime = now;
+        }
+    }
+}
+
+class ApiResponse {
+    public final int statusCode;
+    public final String body;
+
+    public ApiResponse(int statusCode, String body) {
+        this.statusCode = statusCode;
+        this.body = body;
+    }
+}
+```
+
 ## Step-by-step Defense Strategy
 1. **Transport Security:** Force TLS (HTTPS) everywhere to encrypt data in transit.
 2. **Edge Security:** Deploy a Web Application Firewall (WAF) to block SQL Injection, XSS, and botnets before they hit your servers.
@@ -59,6 +224,8 @@ graph TD
 1. **Financial APIs (Open Banking):** Utilizing Mutual TLS (mTLS) where both the client and the server must present cryptographic certificates to establish a connection.
 2. **Public APIs (Twitter/GitHub):** Requiring API Keys or OAuth tokens, and implementing strict rate limiting headers (`X-RateLimit-Remaining`).
 3. **E-commerce:** Masking credit card numbers in API responses to prevent Data Exposure vulnerabilities.
+4. **Automotive Telematics (Tesla API):** Securing endpoint commands (e.g., unlocking car) using ephemeral tokens linked strictly to the car owner's account.
+5. **Healthcare Systems (FHIR API):** Ensuring patient records can only be queried through scoped authorization policies containing consent receipts.
 
 ## Pros
 - Prevents catastrophic data breaches.
@@ -75,14 +242,27 @@ graph TD
 ### Beginner
 - **Q: What is an API Gateway and how does it improve security?**
   - **A:** An API Gateway is a central entry point for all API requests. It improves security by centralizing authentication checks, enforcing rate limits, and hiding the internal network topology of the microservices from the public.
+- **Q: Why is HTTPS critical for API communications?**
+  - **A:** HTTPS encrypts the payload, headers, and request URLs in transit, preventing attackers from performing Man-in-the-Middle (MitM) attacks to eavesdrop on passwords, session cookies, or tokens.
 
 ### Intermediate
 - **Q: Explain Mass Assignment and how to prevent it.**
   - **A:** Mass Assignment occurs when a backend framework automatically binds client JSON data directly to database models. Attackers can inject hidden fields (like `"is_admin": true`). Prevent it by using strict Data Transfer Objects (DTOs) and explicitly defining which fields are allowed to be updated.
+- **Q: What is the difference between Rate Limiting and Throttling?**
+  - **A:** Rate Limiting blocks requests that exceed defined caps over a given timeframe (e.g., returning HTTP 429). Throttling slows down the execution of requests (queueing them or delaying responses) rather than blocking them outright to preserve backend resources.
 
 ### Senior
 - **Q: What is BOLA (Broken Object Level Authorization) and how do you mitigate it?**
   - **A:** BOLA happens when an API endpoint uses an ID from the client (e.g., `/users/5`) but fails to verify if the currently logged-in user is authorized to access user 5. Mitigation involves checking permissions at the data access layer for *every* request: `SELECT * FROM users WHERE id = 5 AND owner_id = :current_user_id`. Also, using non-guessable IDs (like UUIDs) helps reduce visibility, though it's not a substitute for proper auth checks.
+- **Q: How does CORS (Cross-Origin Resource Sharing) protect APIs, and what are common misconfigurations?**
+  - **A:** CORS is a browser-enforced security mechanism that prevents a website on one domain from making requests to an API on another domain unless explicitly allowed by the API server. A common misconfiguration is setting `Access-Control-Allow-Origin: *` while having `Access-Control-Allow-Credentials: true`. This allows any malicious script in the visitor's browser to execute authenticated calls against the API.
+
+### Staff Engineer
+- **Q: How would you secure a high-frequency trading API from replay attacks and request tampering over insecure public networks?**
+  - **A:** 
+    1. **Message Signing (HMAC):** Force clients to sign every HTTP request payload. The client signs a concatenated string: `Timestamp + Nonce + RequestBody` using a shared private API secret. The signature is sent in an `X-Signature` header.
+    2. **Replay Protection (Timestamp & Nonce):** Send a timestamp in `X-Timestamp`. The server validates that the request timestamp is within a tiny tolerance window (e.g., ±5 seconds). Send a unique random `X-Nonce` and keep a record of all processed nonces in a fast, distributed cache (e.g. Redis) with a TTL equal to the tolerance window. If the nonce is already in the cache, reject the request as a replay.
+    3. **Payload Verification:** The server re-computes the HMAC signature using the cached API secret. If it matches `X-Signature`, the request's integrity is proven.
 
 ## Common mistakes
 - **Relying on Obscurity:** Assuming an API is safe because the endpoints aren't published anywhere. Attackers easily intercept mobile app traffic and discover all "hidden" endpoints.

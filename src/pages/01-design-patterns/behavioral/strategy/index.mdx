@@ -105,17 +105,93 @@ public class Main {
 }
 ```
 
+### Python Implementation
+Python allows a standard object-oriented approach matching GoF, but we can also use functions as first-class citizens to simplify the pattern.
+
+```python
+from abc import ABC, abstractmethod
+from typing import Callable
+
+# --- OOP Strategy Pattern ---
+
+# 1. Strategy Interface
+class PaymentStrategy(ABC):
+    @abstractmethod
+    def pay(self, amount: int) -> None:
+        pass
+
+# 2. Concrete Strategies
+class CreditCardPayment(PaymentStrategy):
+    def pay(self, amount: int) -> None:
+        print(f"Paid {amount} using Credit Card.")
+
+class PayPalPayment(PaymentStrategy):
+    def pay(self, amount: int) -> None:
+        print(f"Paid {amount} using PayPal.")
+
+# 3. Context
+class ShoppingCart:
+    def __init__(self) -> None:
+        self._payment_strategy: PaymentStrategy | None = None
+
+    def set_payment_strategy(self, strategy: PaymentStrategy) -> None:
+        self._payment_strategy = strategy
+
+    def checkout(self, amount: int) -> None:
+        if not self._payment_strategy:
+            raise ValueError("Payment strategy not set")
+        self._payment_strategy.pay(amount)
+
+
+# --- Pythonic Strategy Pattern (First-Class Functions) ---
+
+# In Python, we can pass functions directly as strategies, avoiding boilerplate classes.
+def pay_with_credit_card(amount: int) -> None:
+    print(f"Paid {amount} using Credit Card function.")
+
+def pay_with_paypal(amount: int) -> None:
+    print(f"Paid {amount} using PayPal function.")
+
+class PythonicShoppingCart:
+    def __init__(self, payment_strategy: Callable[[int], None] | None = None) -> None:
+        self._payment_strategy = payment_strategy
+
+    def set_payment_strategy(self, strategy: Callable[[int], None]) -> None:
+        self._payment_strategy = strategy
+
+    def checkout(self, amount: int) -> None:
+        if not self._payment_strategy:
+            raise ValueError("Payment strategy not set")
+        self._payment_strategy(amount)
+
+
+# --- Usage ---
+if __name__ == "__main__":
+    # OOP Approach
+    cart = ShoppingCart()
+    cart.set_payment_strategy(CreditCardPayment())
+    cart.checkout(100)
+    
+    # Pythonic Functional Approach
+    py_cart = PythonicShoppingCart(pay_with_paypal)
+    py_cart.checkout(50)
+```
+
 ## Step-by-step explanation
 1. Define a common interface (`PaymentStrategy`) for the algorithms.
 2. Extract the specific algorithms into their own classes implementing the interface (`CreditCardPayment`, `PayPalPayment`).
 3. In the main class (`ShoppingCart`), hold a reference to the interface, not a concrete class.
 4. Allow the client code to inject the desired strategy into the context at runtime.
+5. Alternatively, in languages with first-class functions (like Python), pass callbacks directly as the strategy strategy instead of wrapping them in classes.
 
 ## Multiple real-world examples
 1. **Sorting Algorithms:** A collection class that can be sorted using Bubble Sort, Quick Sort, or Merge Sort depending on the data size.
 2. **Payment Processing:** E-commerce checkout allowing Credit Card, PayPal, or Crypto.
 3. **File Compression:** A file archiver tool that can compress files using ZIP, RAR, or TAR strategies.
 4. **Authentication:** Logging in via Email/Password, Google OAuth, or Apple ID.
+5. **Standard Library Examples:**
+   - In Java, `Comparator.compare()` used in `Collections.sort()` is a classic Strategy pattern.
+   - In Python, the `key` parameter in `sorted()` or `list.sort()` allows injecting a sorting strategy function.
 
 ## Pros
 - **Open/Closed Principle:** You can introduce new strategies without changing the context.
@@ -131,14 +207,28 @@ public class Main {
 ### Beginner
 - **Q: What is the main purpose of the Strategy pattern?**
   - **A:** To encapsulate a family of algorithms into separate classes so they can be interchanged at runtime without altering the code that uses them.
+- **Q: How does the Strategy pattern differ from simple if-else blocks?**
+  - **A:** If-else blocks hardcode the behavior selection inside the context. The Strategy pattern delegate the decision-making and execution to a separate object, decoupled from the context.
 
 ### Intermediate
 - **Q: How does the Strategy pattern adhere to SOLID principles?**
   - **A:** It adheres to the Open/Closed Principle (you can add new strategies without modifying the context) and the Single Responsibility Principle (each strategy class focuses on one specific algorithm).
+- **Q: How can the Strategy pattern be combined with the Factory pattern?**
+  - **A:** You can use a Factory to instantiate the appropriate `Strategy` object based on a dynamic input or configuration parameter, avoiding hardcoding the concrete Strategy in client code.
 
 ### Senior
 - **Q: What is the difference between Strategy and State patterns?**
   - **A:** Structurally they are very similar (both use composition). However, their *intent* differs. In Strategy, the client usually dictates which strategy to use, and strategies are generally independent of each other. In State, the context's behavior changes based on its internal state, and states are often aware of each other and handle transitions to other states.
+- **Q: How does the Strategy pattern leverage delegation over inheritance?**
+  - **A:** Rather than subclassing a class to change its behavior (inheritance), the context class maintains a reference to a Strategy interface and delegates the work to it (composition/delegation). This allows behavioral changes at runtime rather than compile time.
+
+### Staff Engineer
+- **Q: How does the Strategy pattern scale in a large, distributed plug-in architecture, such as dynamic payment routing?**
+  - **A:** In large architectures, concrete strategies are often discovered dynamically (e.g., using Dependency Injection or Service Loader patterns in Java, or plug-in registries). The context accesses these plugins via a unified interface, allowing third-party developers to package and deploy new strategies as separate jars/packages without ever modifying the core application codebase.
+- **Q: Can we use first-class functions instead of traditional Strategy classes in languages like Python or JavaScript? What are the tradeoffs?**
+  - **A:** Yes. Since functions are first-class, you can pass them directly as callbacks. The tradeoff is:
+    - *Pros:* Eliminates class boilerplate, resulting in cleaner and more concise code.
+    - *Cons:* Functions cannot hold complex state or support multiple methods easily like a class can (unless you use closures, which can become harder to debug/manage than structured classes).
 
 ## Common mistakes
 - **Over-engineering:** Using Strategy for an algorithm that only has two simple variations that will never change. A simple `if-else` is better in that case.
@@ -161,3 +251,4 @@ The Strategy pattern is the go-to solution for eliminating complex conditional s
 - [State Pattern](../state)
 - [Template Method](../template-method)
 - [Factory Pattern](../../creational/factory)
+- [Composition vs Inheritance](../../../03-lld/design-principles/composition-vs-inheritance)

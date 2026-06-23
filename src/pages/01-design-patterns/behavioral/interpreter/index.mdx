@@ -130,6 +130,60 @@ public class Main {
 }
 ```
 
+### Python Implementation
+```python
+from abc import ABC, abstractmethod
+
+# 1. Abstract Expression
+class Expression(ABC):
+    @abstractmethod
+    def interpret(self, context: str) -> bool:
+        pass
+
+
+# 2. Terminal Expression (Leaf node)
+class TerminalExpression(Expression):
+    def __init__(self, data: str) -> None:
+        self._data = data
+
+    def interpret(self, context: str) -> bool:
+        # Check if the search token is in the context string
+        return self._data in context
+
+
+# 3. Non-Terminal Expressions (Composite nodes)
+class OrExpression(Expression):
+    def __init__(self, expr1: Expression, expr2: Expression) -> None:
+        self._expr1 = expr1
+        self._expr2 = expr2
+
+    def interpret(self, context: str) -> bool:
+        return self._expr1.interpret(context) or self._expr2.interpret(context)
+
+
+class AndExpression(Expression):
+    def __init__(self, expr1: Expression, expr2: Expression) -> None:
+        self._expr1 = expr1
+        self._expr2 = expr2
+
+    def interpret(self, context: str) -> bool:
+        return self._expr1.interpret(context) and self._expr2.interpret(context)
+
+
+# 4. Usage
+if __name__ == "__main__":
+    # Building the AST for: "Robert AND (John OR Robert)"
+    robert = TerminalExpression("Robert")
+    john = TerminalExpression("John")
+
+    john_or_robert = OrExpression(john, robert)
+    is_male = AndExpression(robert, john_or_robert)
+
+    # Evaluate
+    print("Does context match John?", is_male.interpret("John is here"))      # False
+    print("Does context match Robert?", is_male.interpret("Robert is here"))  # True
+```
+
 ## Step-by-step explanation
 1. Define the grammar of your language.
 2. Create an `Expression` interface with an `interpret()` method.
@@ -143,6 +197,7 @@ public class Main {
 2. **SQL Parsers:** Translating SQL strings into executable database plans.
 3. **Template Engines:** Interpreting double curly braces `{{ variable }}` in HTML templates (like Jinja or Handlebars).
 4. **Calculators:** Parsing and evaluating mathematical strings.
+5. **JSONPath / XPath Evaluators:** Parsing query patterns (like `$.store.book[*].author`) and running them against raw structured XML or JSON documents to filter items.
 
 ## Pros
 - **Easy to extend:** Adding a new rule to the grammar is as simple as adding a new class.
@@ -158,14 +213,32 @@ public class Main {
 ### Beginner
 - **Q: What is the Interpreter pattern used for?**
   - **A:** It is used to define a grammatical representation for a language and an interpreter to evaluate sentences in that language.
+- **Q: What is an Abstract Syntax Tree (AST)?**
+  - **A:** An AST is a hierarchical tree representation of the structure of source code or sentences, where each node represents a grammatical construct (operator, token, operand).
 
 ### Intermediate
 - **Q: What is the difference between Terminal and Non-Terminal expressions?**
   - **A:** Terminal expressions are the "leaves" of the tree; they do not contain other expressions (e.g., a number). Non-Terminal expressions represent rules and contain child expressions (e.g., an addition operator contains a left and right expression).
+- **Q: How does the Interpreter pattern leverage the Composite pattern?**
+  - **A:** The Interpreter pattern uses the Composite pattern to construct the syntax tree. Terminal expressions are the leaf nodes, while Non-Terminal expressions are the composite nodes containing children of type `Expression`.
 
 ### Senior
-- **Q: How does the Interpreter pattern relate to the Composite pattern?**
-  - **A:** The Interpreter pattern uses the Composite pattern internally to build the Abstract Syntax Tree. Terminal expressions act as the Leaves, and Non-Terminal expressions act as the Composites.
+- **Q: How does the Interpreter pattern compare to using formal parser libraries (like ANTLR or YACC)?**
+  - **A:** The Interpreter pattern is suitable only for very simple DSLs (Domain Specific Languages) or query languages. For complex, Turing-complete languages, it suffers from class explosion and poor parsing performance. Formal parser libraries use highly optimized algorithms (like LL(k) or LALR) to parse strings into AST structures efficiently.
+- **Q: How would you optimize an Interpreter that evaluates the same AST repeatedly in a loop?**
+  - **A:** 
+    - Cache intermediate results if the inputs are static.
+    - Compile the AST nodes into a flat bytecode instruction format, and use a simple Virtual Machine/loop to execute the bytecode instead of recursively walking the object tree.
+    - Share Terminal symbol instances using the Flyweight pattern.
+
+### Staff Engineer
+- **Q: In a search filter indexing pipeline (like Elasticsearch query parsing), how do you parse and evaluate boolean filter trees efficiently?**
+  - **A:** Combine the Interpreter pattern with the **Builder** or **Factory** patterns. The parser converts a raw query string into a query AST. To optimize execution:
+    - Prune dead code (e.g., simplifying `A AND False` to `False` at build time).
+    - Sort terms inside `AND` and `OR` nodes dynamically (e.g., evaluating high-cardinality filters first to allow short-circuiting during evaluation).
+    - Map the AST nodes directly to database indexes or Lucene index queries rather than executing memory-bound loops.
+- **Q: Discuss how the Interpreter pattern maps to compilers. How do they transition from an AST to executable code?**
+  - **A:** Compilers build an AST using lexer and parser stages. Instead of directly executing `interpret()` recursively (which is slow), they use the **Visitor Pattern** to walk the AST and generate intermediate representations (IR) or platform-specific bytecodes. This decouples the representation of the language grammar from code generation, optimization, and VM execution.
 
 ## Common mistakes
 - Trying to parse complex, Turing-complete programming languages using this pattern. For complex languages, use dedicated parser generators (like ANTLR, YACC, or Bison).
@@ -187,5 +260,5 @@ public class Main {
 The Interpreter pattern is a specialized tool for evaluating domain-specific languages (DSLs), mathematical formulas, or complex queries. By converting grammatical rules into a tree of objects, it provides an elegant, highly extensible way to evaluate custom syntax, provided the language remains relatively simple.
 
 ## Related topics
-- Composite Pattern
+- [Composite Pattern](../../structural/composite)
 - [Visitor Pattern](../visitor)

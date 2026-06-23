@@ -1,119 +1,204 @@
 # Open/Closed Principle (OCP)
 
 ## Introduction
-The Open/Closed Principle is the "O" in SOLID. It dictates how software entities (classes, modules, functions) should be designed to accommodate future growth and new features without breaking existing code.
+The Open/Closed Principle (OCP) is the second principle in the SOLID framework. It serves as a core guideline for writing software that is resilient to changing requirements, ensuring that new features can be added with minimal risk to existing code.
 
 ## Problem Statement
-Imagine you have an `OrderProcessor` class. Initially, it only processes Credit Cards. 
-Six months later, the business wants to add PayPal. You open the `OrderProcessor` class and add an `if (paymentType == "PayPal")` statement.
-A year later, they want Crypto. You open it again and add another `if-else`. 
-Every time you open this class to modify it, you risk breaking the existing, working Credit Card logic. You have to re-test the entire class.
+Imagine an `OrderProcessor` class that calculates discounts. Initially, it only processes discounts for `Regular` and `Premium` customers using an `if-else` block. Later, the business decides to introduce `VIP`, `Student`, and `BlackFriday` discount tiers. To support this, you must continually open the `OrderProcessor` class and add more conditional blocks. Modifying a stable, tested class introduces regression risks and requires re-testing the entire module.
 
 ## Why this exists
-To allow systems to grow and add new features seamlessly, without the risk of introducing bugs into old, stable, tested code.
+To build software that scales by addition rather than mutation. OCP ensures that stable code remains untouched while providing structured hooks or abstractions for developers to extend behavior.
 
 ## Real-world analogy
-Consider a desktop computer.
-If you want to add a new graphics card, you don't use a soldering iron to physically rewire the motherboard. The motherboard is **closed for modification**. 
-Instead, you simply plug the new graphics card into a standard expansion slot (PCIe). The motherboard is **open for extension**.
+Consider a **desktop computer motherboard**.
+If you want to upgrade your graphics card, you do not use a soldering iron to physically rewire the motherboard's circuits. The motherboard is **closed for modification**. Instead, you plug the new graphics card into a standard PCIe slot. The motherboard is **open for extension** because it defines a standard interface.
+
+Another analogy is a **power socket**. The wall outlet provides electrical power (closed for modification). If you want to connect a vacuum cleaner, a phone charger, or a lamp, you plug it into the socket. You do not rewire the house's electrical panel every time you buy a new appliance (open for extension).
 
 ## Definition
-**"Software entities (classes, modules, functions, etc.) should be open for extension, but closed for modification."** — Bertrand Meyer
-
-- **Open for extension:** You can add new behaviors/features.
-- **Closed for modification:** You do not modify the existing source code of the module.
+The Open/Closed Principle states that software entities (classes, modules, functions) should be open for extension but closed for modification.
+- **Open for extension:** The behavior of the module can be extended to meet new requirements.
+- **Closed for modification:** Extending the behavior does not require modifying the module's existing source code.
 
 ## Key concepts
-- **Polymorphism:** OCP is almost always achieved using Polymorphism (Interfaces or Abstract Classes).
-- **Interfaces / Contracts:** By programming to an interface, you can inject new implementations without changing the class that consumes the interface.
+- **Polymorphism:** The primary mechanism for achieving OCP by defining contracts that concrete classes implement.
+- **Strategy Design Pattern:** Enforces OCP by delegating algorithms (like discount logic) to interchangeable strategy objects.
+- **Abstraction Boundaries:** Establishing clear interfaces so client code interacts with contracts rather than concrete implementations.
+
+## Internal working / Mermaid diagram
+
+```mermaid
+graph TD
+    Client[OrderProcessor] -->|Calculates via| Contract[DiscountStrategy Interface]
+    Contract -.->|Extends| Regular[RegularDiscount]
+    Contract -.->|Extends| Premium[PremiumDiscount]
+    Contract -.->|Extends| VIP[VipDiscount]
+    Contract -.->|Extends| Student[StudentDiscount]
+```
 
 ## Python/Java implementation
 
-### Bad Implementation (Violating OCP)
+### Bad implementation
+*A calculator containing hardcoded customer type evaluations. Adding a new customer type or holiday sale discount requires modifying the core calculator class.*
+
 ```java
-class DiscountCalculator {
-    public double calculate(String customerType, double price) {
-        // Every time a new customer type is added, we MUST MODIFY this method.
-        if (customerType.equals("Regular")) {
-            return price;
-        } else if (customerType.equals("Premium")) {
-            return price * 0.9; // 10% off
-        } else if (customerType.equals("VIP")) {
-            return price * 0.8; // 20% off
+package bad;
+
+public class DiscountCalculator {
+    public double calculateDiscount(String customerType, double price) {
+        // Violates OCP: Every new discount type requires modifying this class
+        if ("REGULAR".equalsIgnoreCase(customerType)) {
+            return price * 0.05; // 5%
+        } else if ("PREMIUM".equalsIgnoreCase(customerType)) {
+            return price * 0.10; // 10%
+        } else if ("VIP".equalsIgnoreCase(customerType)) {
+            return price * 0.20; // 20%
         }
-        return price;
+        return 0;
     }
 }
 ```
 
-### Better Implementation (Following OCP)
+### Better implementation
+*Using subclassing to override behavior. While this works, it leads to rigid inheritance trees and can violate the Single Responsibility Principle if class responsibilities become bloated.*
+
 ```java
-// 1. Create an Abstraction
-interface CustomerDiscount {
-    double applyDiscount(double price);
-}
+package better;
 
-// 2. Create concrete implementations
-class RegularCustomer implements CustomerDiscount {
-    public double applyDiscount(double price) { return price; }
-}
-
-class PremiumCustomer implements CustomerDiscount {
-    public double applyDiscount(double price) { return price * 0.9; }
-}
-
-class VipCustomer implements CustomerDiscount {
-    public double applyDiscount(double price) { return price * 0.8; }
-}
-
-// 3. The main class uses the abstraction
 class DiscountCalculator {
-    // This class is now CLOSED for modification. 
-    // If we add an "EmployeeCustomer", this code DOES NOT CHANGE.
-    public double calculate(CustomerDiscount customer, double price) {
-        return customer.applyDiscount(price);
+    public double getDiscount(double price) {
+        return price * 0.05;
+    }
+}
+
+// Subclassing to extend: works but couples code to inheritance hierarchies
+class VipDiscountCalculator extends DiscountCalculator {
+    @Override
+    public double getDiscount(double price) {
+        return price * 0.20;
     }
 }
 ```
+
+### Best implementation
+*A Strategy pattern implementation. The `OrderProcessor` depends on the `DiscountStrategy` interface, allowing new discount types to be added as separate classes without modifying the processor.*
+
+```java
+package best;
+
+import java.util.Objects;
+
+// 1. Interface defining the extension contract
+interface DiscountStrategy {
+    double apply(double price);
+}
+
+// 2. Concrete implementations (open to extension)
+class RegularDiscount implements DiscountStrategy {
+    @Override
+    public double apply(double price) {
+        return price * 0.05;
+    }
+}
+
+class PremiumDiscount implements DiscountStrategy {
+    @Override
+    public double apply(double price) {
+        return price * 0.10;
+    }
+}
+
+class VipDiscount implements DiscountStrategy {
+    @Override
+    public double apply(double price) {
+        return price * 0.20;
+    }
+}
+
+// Adding a new discount strategy is as simple as adding a new class
+class BlackFridayDiscount implements DiscountStrategy {
+    @Override
+    public double apply(double price) {
+        return price * 0.50; // 50% discount
+    }
+}
+
+// 3. Calculator class (closed for modification)
+public class OrderProcessor {
+    private final DiscountStrategy discountStrategy;
+
+    // Inject the strategy (decoupled dependency)
+    public OrderProcessor(DiscountStrategy discountStrategy) {
+        this.discountStrategy = Objects.requireNonNull(discountStrategy);
+    }
+
+    public double processOrder(double price) {
+        double discount = discountStrategy.apply(price);
+        return price - discount;
+    }
+}
+```
+
+## Step-by-step explanation
+1. **Define the Extensible Interface:** We declare the `DiscountStrategy` interface, which defines the method signature: `apply(double price)`.
+2. **Implement Strategies:** We write separate classes (`RegularDiscount`, `PremiumDiscount`, `VipDiscount`) implementing this interface.
+3. **Decouple the Processor:** We update `OrderProcessor` to depend on the `DiscountStrategy` interface rather than concrete classes.
+4. **Extend without Modifying:** When a new discount tier (e.g., `BlackFridayDiscount`) is needed, we create a new strategy class. The `OrderProcessor` class remains unchanged, fulfilling the Open/Closed Principle.
 
 ## Multiple real-world examples
-1. **Notification Systems:** A `NotificationService` takes a `List<Sender>` interface. You can add an `SmsSender`, `EmailSender`, or `PushSender` later without touching the core `NotificationService`.
-2. **Sorting Algorithms:** `Collections.sort()` takes a `Comparator` interface. You can invent entirely new sorting logic for your custom objects, and Java's built-in `sort()` method can execute it without Java's source code needing to be modified.
-3. **Browser Plugins:** Chrome is closed for modification (you can't edit Chrome's source code), but it is open for extension via its Extension API.
+- **Payment Gateways:** A checkout system depends on a `PaymentProcessor` interface. Adding support for `PayPal` or `Stripe` is done by creating new classes implementing the interface, leaving the checkout logic untouched.
+- **Logging Adapters:** A logger class delegates writing to a `LogAppender` interface. Developers can add new appenders (console, file, database, Slack) without modifying the logger.
+- **Browser Extensions:** Browsers provide extension APIs. Developers can add features (ad blockers, password managers) without modifying the browser's source code.
 
 ## Pros
-- **Safety:** Old, tested code is not touched, minimizing regression bugs.
-- **Scalability:** New features are added by simply creating new classes, making the system highly modular and scalable.
-- **Parallel Development:** Developer A can write the `PayPalPayment` class while Developer B writes the `CryptoPayment` class, without merge conflicts in a central `PaymentProcessor` file.
+- **Decoupled Development:** Multiple developers can build new features in separate classes without merge conflicts in a central processor file.
+- **Lower Regression Risk:** Working code remains untouched, preventing accidental bugs in existing features.
+- **Easier Testing:** New features can be tested in isolation without re-running tests for old modules.
 
 ## Cons
-- **Over-engineering:** Trying to make *everything* perfectly extensible from day one leads to a massive explosion of interfaces and abstract classes (YAGNI violation). Sometimes a simple `if-else` is fine if the business rules rarely change.
+- **Over-engineering:** Designing for OCP from day one can lead to an excess of interfaces and abstract classes, violating the YAGNI (You Aren't Gonna Need It) principle.
 
 ## Interview questions
 
 ### Beginner
-- **Q: What does "Open for Extension, Closed for Modification" mean?**
-  - **A:** It means you should be able to add new functionality to a system (open for extension) without altering the existing, working source code (closed for modification).
+- **Q: What is the Open/Closed Principle?**
+- **A:** OCP states that software classes should be open for extension (adding new features) but closed for modification (not changing existing source code).
 
 ### Intermediate
-- **Q: How is OCP typically implemented in Java/C++?**
-  - **A:** Using Polymorphism (Interfaces or Abstract classes). The core class depends on an interface, and new features are added by creating new classes that implement that interface.
+- **Q: How does Polymorphism support OCP?**
+- **A:** Polymorphism allows a class to interact with an interface rather than concrete classes. This lets developers introduce new classes implementing the interface without modifying the class that calls them.
 
 ### Senior
-- **Q: Should every single class be designed to satisfy OCP from the start?**
-  - **A:** No. Anticipating every possible future change leads to abstract, unreadable code. A better approach is "Fool me once, shame on you. Fool me twice, shame on me." Write the simple `if` statement first. The *second* time you have to modify that `if` statement for a new requirement, refactor it to follow OCP.
+- **Q: How does OCP relate to the Strategy and Decorator design patterns?**
+- **A:** Both patterns are direct implementations of OCP. The Strategy pattern lets you plug in different algorithms at runtime via an interface, while the Decorator pattern dynamically wraps an object to extend its behavior without modifying the original class.
+
+### Staff Engineer
+- **Q: How do you balance the trade-offs of OCP with YAGNI when designing complex enterprise systems?**
+- **A:** Implement OCP selectively by:
+  1. **Applying OCP after duplication occurs:** Do not create interfaces for every class upfront. Write a simple `if` block first. The second time that block needs modification, refactor it to use interfaces.
+  2. **Analyzing Volatility:** Identify parts of the domain that change frequently (e.g., payment gateways, reporting formats, tax rules) and design them to follow OCP. Keep stable areas (such as math utilities or basic configuration models) simple.
 
 ## Common mistakes
-- **Hardcoding Switch Statements:** Massive `switch` statements based on ENUM types are a classic red flag for OCP violations.
+- **Using Switch Blocks on Enums:** Writing central `switch` statements that evaluate object type tags.
+- **Over-abstracting Code:** Creating interfaces for classes that are unlikely to ever need extension.
 
 ## Best practices
-- Identify the parts of your application that change frequently (e.g., Payment Methods, Export Formats, Discount Rules) and apply OCP there.
-- Use Design Patterns like the **Strategy Pattern** or **Decorator Pattern**, which are essentially just formal implementations of OCP.
+- Program to interfaces rather than concrete classes.
+- Use dependency injection to pass strategies to processors.
+- Keep stable classes free of conditional logic that depends on type extensions.
+
+## When NOT to use
+- **Stable Domains:** If a module is unlikely to change or extend, a simple implementation is preferred over abstract interfaces.
+
+## Comparison with similar concepts
+- **OCP vs YAGNI:**
+  - **OCP:** Designing code so that it can be extended without modification.
+  - **YAGNI:** A principle advising against writing code or abstractions before they are actually needed. Balance them by applying OCP only when requirements change.
 
 ## Summary
-The Open/Closed Principle ensures that as software requirements grow, the codebase grows by *addition* (adding new classes) rather than by *mutation* (modifying old classes). This results in a stable, resilient system where new features don't break old functionality.
+The Open/Closed Principle ensures that systems scale by adding new classes rather than modifying existing ones. This reduces regression risks and makes codebases highly modular.
 
 ## Related topics
 - [Polymorphism](../../oop-fundamentals/polymorphism)
 - [Single Responsibility Principle](../single-responsibility-principle)
-- [Strategy Pattern](../../../01-design-patterns/behavioral/strategy)
+- [Dependency Inversion Principle](../dependency-inversion-principle)

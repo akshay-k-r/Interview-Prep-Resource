@@ -1,136 +1,291 @@
-# CompletableFuture
+# CompletableFuture in Java
 
 ## Introduction
-Introduced in Java 8, `CompletableFuture` is an implementation of the `Future` interface that revolutionized asynchronous programming in Java. It allows developers to write non-blocking, asynchronous code in a declarative, functional style—similar to Promises in JavaScript.
+Introduced in Java 8, `CompletableFuture` is a class implementing both `Future` and `CompletionStage`. It revolutionized asynchronous programming in Java by allowing developers to write non-blocking, event-driven, and functional-style asynchronous code, resolving the limitations of legacy Java futures.
+
+---
 
 ## Problem Statement
-The older `Future` interface (returned by `ExecutorService.submit()`) had a massive flaw: it was passive. 
-If you submitted a task that fetched a user from a database, and you wanted to send an email to that user once the fetch was done, you had two bad options:
-1. Call `future.get()`, which **blocks** the main thread entirely while waiting for the database.
-2. Write a messy, infinite `while(!future.isDone())` loop to constantly poll the status.
+The older `Future` interface (returned by `ExecutorService.submit()`) was passive. It acted as a container for a pending computation, but to retrieve the result, the caller had to either block the main thread by calling `future.get()`, or poll using a busy-waiting CPU loop (`while (!future.isDone())`). Developers could not chain dependent tasks (e.g., "fetch customer details, then when done, calculate order price, then notify client") without incurring blocking calls.
 
-Neither approach allowed you to easily say: *"Fetch the user, and **then** when that finishes, automatically trigger the email task, and **then** log success."*
+---
 
 ## Why this exists
-To enable fully reactive, non-blocking pipelines of asynchronous tasks. It allows you to chain multiple futures together, combine their results, and handle exceptions functionally, without ever explicitly blocking a thread to wait for a result.
+To enable asynchronous pipelines and reactive composition. `CompletableFuture` allows developers to register callbacks that execute automatically once a task completes. It supports chaining, combining parallel independent streams, handling exceptions functionally, and specifying target thread execution contexts for every computational step.
+
+---
 
 ## Real-world analogy
-Think of ordering food at a fast-food restaurant.
-- **Old `Future.get()`:** You order a burger, and you stand rigidly at the counter staring at the cashier until the burger is handed to you. You are "blocked" from looking at your phone or talking to a friend.
-- **`CompletableFuture`:** You order a burger, and the cashier gives you a buzzer. You go sit down, talk to your friends, and do other things. When the burger is ready, the buzzer interrupts you automatically, triggering your next action (eating). You were never blocked.
+Think of ordering custom furniture:
+- **Old `Future` (Blocking):** You place an order for a table (submit task). You are forced to wait at the warehouse entrance (blocking `.get()`), doing absolutely nothing else, until the carpenter finishes building it.
+- **`CompletableFuture` (Non-Blocking):** You place the order, and the warehouse gives you a tracking receipt (CompletableFuture). You go home, work on other projects, or read a book. You also attach instructions: *"When the table is done, paint it red (`thenApply`), then deliver it to my home (`thenAccept`). If anything breaks during transit, call my insurance (`exceptionally`)"*. You never stand idle waiting.
+
+---
 
 ## Definition
-A class that implements both `Future` and `CompletionStage`. It represents a stage of a potentially asynchronous computation, providing methods to chain dependent stages that execute upon completion.
+- **CompletableFuture:** A class representing an asynchronous computation stage that can be explicitly completed by setting its value and status.
+- **CompletionStage:** A promise interface representing a stage of a larger computation that performs an action or computes a value when another CompletionStage completes.
 
-## Key concepts & Methods
+---
 
-### 1. Initiating Async Tasks
-- `supplyAsync(Supplier)`: Starts an async task that *returns* a value.
-- `runAsync(Runnable)`: Starts an async task that returns *nothing*.
+## Key concepts
+1. **Asynchronous Execution**: Launching tasks using helper methods like `supplyAsync` (for tasks returning values) or `runAsync` (for tasks returning void).
+2. **Pipelines**: Chaining stages sequentially:
+   - `thenApply()`: Transforms the result (maps $T \to U$).
+   - `thenAccept()`: Consumes the result (maps $T \to \text{void}$).
+3. **Composition vs. Combination**:
+   - `thenCompose()`: Sequences dependent tasks (maps $T \to \text{CompletableFuture}<U>$ and flattens to `CompletableFuture<U>`).
+   - `thenCombine()`: Merges two independent concurrent tasks together.
+4. **Asynchronous Suffix (`*Async`)**: Methods ending in `Async` (e.g., `thenApplyAsync`) execute their callbacks in a separate thread from the executor pool instead of executing on the thread that completed the previous task.
 
-### 2. Chaining Tasks (Callbacks)
-- `thenApply(Function)`: Takes the result of the previous stage, processes it, and returns a new value. (Like `.map()` in Streams).
-- `thenAccept(Consumer)`: Takes the result of the previous stage and consumes it (e.g., printing to console), returning nothing.
-- `thenRun(Runnable)`: Executes a block of code after the previous stage finishes, without needing its result.
+---
 
-### 3. Combining Futures
-- `thenCompose()`: Used to chain two sequential Futures (where the second Future depends on the result of the first). FlatMaps the futures.
-- `thenCombine()`: Used to run two independent Futures in parallel and do something with both of their results when they both finish.
-- `allOf()`: Waits for an array of multiple Futures to all complete.
+## Internal working / Mermaid diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Main as Main Thread
+    participant CF1 as CompletableFuture 1 (Database Fetch)
+    participant CF2 as CompletableFuture 2 (Payment Service)
+    participant Executor as Custom Thread Pool
+
+    Main->>CF1: supplyAsync(fetchUser, executor)
+    CF1->>Executor: Schedule user query task
+    Main->>CF1: thenCompose(user -> processPayment(user))
+    Note over Main: Main thread continues executing other logic (Non-Blocking)
+    
+    Executor-->>CF1: Query task finishes
+    CF1->>CF2: Triggers dependent stage (Payment Process)
+    CF2->>Executor: Schedule payment execution
+    Executor-->>CF2: Payment finishes
+    CF2-->>Main: Pipeline fully resolved
+```
+
+---
 
 ## Python/Java implementation
 
-### 1. Basic Chaining Example
+### 1. Bad Implementation: Blocking Immediate `get()` calls
+Retrieving the value of a Future immediately after submitting it nullifies all benefits of asynchronous execution, acting identically to synchronous execution.
+
 ```java
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.*;
 
-public class AsyncExample {
-    public static void main(String[] args) {
+public class BadFuturePipeline {
+    public void runPipeline() throws ExecutionException, InterruptedException {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         
-        System.out.println("Main thread: " + Thread.currentThread().getName());
-
-        CompletableFuture.supplyAsync(() -> {
-            // Task 1: Runs in a background thread (ForkJoinPool by default)
-            System.out.println("Fetching order... in " + Thread.currentThread().getName());
-            sleep(1000); 
-            return "Order_123";
-            
-        }).thenApply(orderId -> {
-            // Task 2: Runs only after Task 1 finishes
-            System.out.println("Enriching " + orderId);
-            return orderId + "_Enriched";
-            
-        }).thenAccept(enrichedOrder -> {
-            // Task 3: Consumes the final result
-            System.out.println("Saving " + enrichedOrder + " to DB.");
+        Future<String> userFuture = executor.submit(() -> {
+            Thread.sleep(1000); // Fetch user
+            return "John Doe";
         });
 
-        System.out.println("Main thread is NOT BLOCKED. It is free to do other things!");
-        
-        sleep(2000); // Prevent main thread from exiting before async tasks finish
-    }
+        // CRITICAL BUG: Blocking get() immediately suspends the calling thread, 
+        // preventing any concurrent overlap with subsequent task submissions.
+        String user = userFuture.get(); 
 
-    private static void sleep(int ms) {
-        try { Thread.sleep(ms); } catch (Exception e) {}
+        Future<String> paymentFuture = executor.submit(() -> {
+            Thread.sleep(1000); // Process payment for user
+            return user + "_Paid";
+        });
+
+        String receipt = paymentFuture.get(); // Blocks again
+        System.out.println("Receipt: " + receipt);
+        executor.shutdown();
     }
 }
 ```
 
-### 2. Handling Exceptions (The Functional Way)
-If an exception is thrown in `supplyAsync`, it skips all `thenApply` stages and jumps straight to `exceptionally()`.
+### 2. Better Implementation: CompletableFuture with Unhandled Exceptions
+Using `CompletableFuture` allows chaining, but neglecting exception handling can leave the application hanging or silently ignoring critical errors.
+
 ```java
-CompletableFuture.supplyAsync(() -> {
-    if (true) throw new RuntimeException("Database timeout!");
-    return "Data";
-}).thenApply(data -> {
-    System.out.println("This will be skipped.");
-    return data + " Processed";
-}).exceptionally(ex -> {
-    System.err.println("Caught error: " + ex.getMessage());
-    return "Fallback Default Data"; // Recover gracefully
-}).thenAccept(finalData -> {
-    System.out.println("Consuming: " + finalData); // Prints: Consuming: Fallback Default Data
-});
+import java.util.concurrent.CompletableFuture;
+
+public class BetterFuturePipeline {
+    public void runPipeline() {
+        CompletableFuture<String> pipeline = CompletableFuture.supplyAsync(() -> {
+            if (Math.random() > 0.5) {
+                // BUG: If this exception is thrown, it propagates silently down the pipeline 
+                // and the final Consumer is never notified unless they block on get().
+                throw new RuntimeException("Network timeout!");
+            }
+            return "UserDetails";
+        });
+
+        pipeline.thenApply(user -> user + "_Validated")
+                .thenAccept(result -> System.out.println("Processed: " + result));
+    }
+}
 ```
 
+### 3. Best Implementation: Fully Asynchronous Pipelines with Error Recovery
+Chaining dependent tasks (`thenCompose`), executing independent runs concurrently (`thenCombine`), and managing errors gracefully using functional fallbacks.
+
+```java
+import java.util.concurrent.*;
+
+public class BestFuturePipeline {
+    private final ExecutorService ioExecutor = Executors.newFixedThreadPool(10);
+    private final ExecutorService cpuExecutor = Executors.newFixedThreadPool(4);
+
+    public void processOrderFlow(String userId, String itemId) {
+        // 1. Task A: Fetch user data (I/O bound)
+        CompletableFuture<User> userStage = CompletableFuture.supplyAsync(
+                () -> fetchUserFromDb(userId), ioExecutor
+        );
+
+        // 2. Task B: Fetch product price (I/O bound)
+        CompletableFuture<Double> priceStage = CompletableFuture.supplyAsync(
+                () -> fetchItemPrice(itemId), ioExecutor
+        );
+
+        // 3. Combine independent concurrent tasks: User & Price
+        CompletableFuture<OrderReceipt> receiptStage = userStage.thenCombineAsync(priceStage, (user, price) -> {
+            // CPU-bound composition
+            return new OrderReceipt(user, price);
+        }, cpuExecutor);
+
+        // 4. Compose dependent task: Process billing (dependent on OrderReceipt)
+        CompletableFuture<Boolean> billingStage = receiptStage.thenCompose(receipt -> 
+                CompletableFuture.supplyAsync(() -> chargeUser(receipt), ioExecutor)
+        );
+
+        // 5. Functional Error Recovery and terminal execution
+        billingStage.exceptionally(ex -> {
+            System.err.println("Pipeline failed: " + ex.getCause().getMessage());
+            return false; // Recovery fallback state
+        }).thenAccept(success -> {
+            System.out.println("Order completed successfully: " + success);
+        });
+    }
+
+    // Mock Methods
+    private User fetchUserFromDb(String id) { return new User(id, "Alice"); }
+    private double fetchItemPrice(String id) { return 49.99; }
+    private boolean chargeUser(OrderReceipt receipt) { return true; }
+
+    static class User {
+        String id, name;
+        User(String id, String name) { this.id = id; this.name = name; }
+    }
+    static class OrderReceipt {
+        User user; double total;
+        OrderReceipt(User u, double t) { this.user = u; this.total = t; }
+    }
+}
+```
+
+---
+
+## Step-by-step explanation
+1. **Concurrent Initiation**: In the `Best` implementation, `userStage` and `priceStage` start running in parallel across the custom I/O thread pool (`ioExecutor`).
+2. **Asynchronous Combination**: Once both independent futures complete, `thenCombineAsync` receives both outputs (`User` and `Double`) and merges them into an `OrderReceipt`. This step is scheduled on `cpuExecutor` since it is purely computational.
+3. **Sequential Composition**: The payment step depends on the receipt. `thenCompose` is called to launch `chargeUser` asynchronously, preventing nested types like `CompletableFuture<CompletableFuture<Boolean>>`.
+4. **Exception Handling**: `.exceptionally()` acts as a catch block. If any previous stage (database query, pricing service, or bank API) throws an exception, the pipeline halts normal execution, forwards the exception to this block, logs it, and returns `false` to recover.
+5. **Terminal Consumer**: `.thenAccept()` consumes the final output to execute print or callback operations.
+
+---
+
 ## Multiple real-world examples
-1. **Microservice Aggregation:** An API endpoint needs to return a "User Dashboard". It needs to fetch User Data (Service A), Recent Orders (Service B), and Recommendations (Service C). Instead of fetching them sequentially (taking 3 seconds), you use `CompletableFuture.supplyAsync()` to fetch all three in parallel, and use `CompletableFuture.allOf()` to merge the JSON responses when they are all ready (taking 1 second).
-2. **Event-Driven Architectures:** When an order is placed, you want to send a push notification, update the inventory, and send an email. You can chain these as non-blocking `CompletableFuture` stages.
+1. **E-commerce Checkout:** Querying loyalty points, processing credit cards, updating inventories, and sending email receipts simultaneously.
+2. **API Gateways:** Aggregating data from multiple microservices concurrently to build a unified response payload for mobile clients.
+3. **Data Extract-Transform-Load (ETL) Pipelines:** Reading bulk CSV chunks asynchronously, parsing them in parallel CPU pools, and saving the results database-by-database.
+
+---
 
 ## Pros
-- **Highly Scalable:** Maximizes CPU usage by never blocking threads waiting for network/DB calls.
-- **Readable Pipelines:** Complex async logic reads top-to-bottom like a clear pipeline, rather than a confusing nested "Callback Hell".
+- **Non-blocking Execution:** Frees up threads during I/O waits, maximizing server throughput.
+- **Readable Composition:** Avoids the deep nesting of callbacks ("Callback Hell") through clean functional chaining.
+- **Granular Thread Tuning:** Allows assigning different tasks to dedicated pools via `Async` suffixes.
+
+---
 
 ## Cons
-- **Debugging:** Stack traces inside CompletableFutures are notoriously difficult to read because the thread that threw the exception is often an anonymous worker thread from the ForkJoin pool, completely detached from the main application thread.
-- **Thread Context Loss:** If your framework relies on `ThreadLocal` variables (like Spring Security context or Trace IDs), those variables are lost when the task jumps to a new background thread in `supplyAsync`.
+- **Debugging Pain:** Stack traces are detached from the initiating thread, making root-cause analysis difficult.
+- **ThreadLocal Isolation:** Contexts like Spring Security principal or Logback MDC transaction IDs do not propagate to async worker threads automatically.
+- **Resource Saturation:** Using the default `ForkJoinPool.commonPool()` for blocking I/O can starve other parts of the application.
+
+---
 
 ## Interview questions
 
 ### Beginner
-- **Q: What is the main advantage of `CompletableFuture` over standard `Future`?**
-  - **A:** `Future` requires you to call `.get()` which blocks the thread until the result is ready. `CompletableFuture` allows you to register callbacks (`thenApply`, `thenAccept`) that automatically trigger when the result is ready, without blocking.
+- **Q: What is the difference between `runAsync` and `supplyAsync`?**
+  - **A:** `runAsync()` accepts a `Runnable` and returns `CompletableFuture<Void>` (no result returned). `supplyAsync()` accepts a `Supplier<T>` and returns `CompletableFuture<T>` containing the output computed by the supplier.
 
 ### Intermediate
-- **Q: What thread pool does `CompletableFuture` use by default?**
-  - **A:** By default, if you don't pass an explicit `ExecutorService` as the second argument, it uses the `ForkJoinPool.commonPool()`.
+- **Q: What happens if an exception is thrown in a middle stage of a `CompletableFuture` chain?**
+  - **A:** The execution of subsequent normal processing stages (like `thenApply`) is bypassed. The exception travels down the pipeline until it reaches an exception-handling stage like `exceptionally()`, `handle()`, or `whenComplete()`. If no handler exists, the error is swallowed inside the future object.
 
 ### Senior
-- **Q: What is the difference between `thenApply` and `thenCompose`?**
-  - **A:** It is identical to `map` vs `flatMap` in Streams. 
-  - If your callback function returns a plain String, use `thenApply`. 
-  - If your callback function *itself* returns a `CompletableFuture<String>` (e.g., you need to make another async DB call), using `thenApply` will result in a nested `CompletableFuture<CompletableFuture<String>>`. You must use `thenCompose` to flatten it back into a single `CompletableFuture<String>`.
+- **Q: Compare `thenApply` and `thenCompose`.**
+  - **A:** 
+    - `thenApply` is used for synchronous transformations where the mapper returns a raw value $U$ (yielding `CompletableFuture<U>`).
+    - `thenCompose` is used for asynchronous transformations where the mapper returns another `CompletableFuture<U>`. It flattens the result, preventing nested futures (`CompletableFuture<CompletableFuture<U>>`), acting like `flatMap`.
+
+### Staff Engineer
+- **Q: Explain how you would propagate `ThreadLocal` contexts (like transaction tracing headers or authentication tokens) across `CompletableFuture` async boundaries.**
+  - **A:** Because `CompletableFuture` shifts task execution to thread pools, native `ThreadLocal` values are lost. To resolve this, one must intercept task submission. This is achieved by creating a decorator pattern around the `ExecutorService`. The custom executor captures the active thread context during task submission (`submit`/`execute`), wraps the `Runnable`/`Callable` to inject the captured context into the worker thread before execution, and cleans it up in a `finally` block after completion:
+  ```java
+  public class ContextPropagatingExecutor implements Executor {
+      private final Executor delegate;
+      public ContextPropagatingExecutor(Executor delegate) { this.delegate = delegate; }
+      @Override
+      public void execute(Runnable command) {
+          String traceId = TraceContext.getTraceId(); // Capture context
+          delegate.execute(() -> {
+              TraceContext.setTraceId(traceId); // Inject context
+              try {
+                  command.run();
+              } finally {
+                  TraceContext.clear(); // Clean up context
+              }
+          });
+      }
+  }
+  ```
+
+---
 
 ## Common mistakes
-- **Using default pools for heavy I/O:** The default `ForkJoinPool` is sized based on your CPU cores (e.g., 8 threads). If you use `supplyAsync` to make slow HTTP requests to an external API, those 8 threads will quickly all get blocked waiting for the network, freezing your entire application. **Always pass a custom, tuned `ExecutorService` to `supplyAsync()` when doing I/O.**
+- **Using the common ForkJoinPool for Blocking I/O:** The common pool has a small number of threads optimized for CPU-bound tasks. Saturating it with blocking socket I/O blocks the entire JVM.
+- **Forgetting Exception Handlers:** Leaving out `.exceptionally()` or `.handle()` leads to silent failures where database errors or API failures vanish without warnings.
+- **Calling `.get()` or `.join()` inside pipeline steps:** Doing this defeats the purpose of non-blocking chaining, locking thread execution mid-pipeline.
+
+---
 
 ## Best practices
-- Write pure functions inside your stages. Do not mutate shared variables outside the scope of the lambda.
-- Always add an `.exceptionally()` or `.handle()` stage at the end of your pipelines to ensure errors aren't swallowed silently.
+- **Always provide a custom executor:** Pass a dedicated, sized thread pool to all async calls.
+- **Keep pipelines clean:** Avoid mutating shared state inside lambdas; strive for pure, stateless functions.
+- **Handle all errors:** Terminate pipelines with `exceptionally()` to log errors and supply fallback states.
+
+---
+
+## When NOT to use
+- **Simple synchronous operations:** If steps are light and sequential, the overhead of task scheduling and thread allocation outweighs any concurrency gains.
+- **Virtual Thread environments (JDK 21+):** When using Virtual Threads, standard blocking code is already extremely efficient, reducing the need for complex reactive future pipelines.
+
+---
+
+## Comparison with similar concepts
+
+| Metric | Future | CompletableFuture | RxJava / Project Reactor |
+| :--- | :--- | :--- | :--- |
+| **Model** | Pull (blocking) | Push (event-driven callbacks) | Push (reactive streams) |
+| **Cardinality** | Single value | Single value | Zero-to-infinity stream (Flux/Mono) |
+| **Chaining Support**| No | Yes | Yes (Advanced operations) |
+| **Backpressure** | N/A | N/A | Yes |
+
+---
 
 ## Summary
-`CompletableFuture` is the modern standard for writing high-performance, non-blocking Java applications. By enabling elegant method chaining, parallel execution, and functional error recovery, it brings the massive benefits of Reactive Programming directly into the core Java language.
+`CompletableFuture` provides powerful asynchronous task composition in Java. By utilizing non-blocking callbacks, mapping composition, and functional error handling, developers can construct fast, thread-safe request pipelines while managing background resource pools effectively.
+
+---
 
 ## Related topics
 - [Executors & Thread Pools](../executors-thread-pools)
+- [Memory Models](../memory-models)
 - [Streams & Functional Programming](../../java/streams-functional)

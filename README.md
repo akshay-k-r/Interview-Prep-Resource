@@ -38,7 +38,7 @@ Each topic includes:
 - Interview questions (beginner to staff engineer level)
 - Related topics for cross-reference learning
  
-**Progress:** 147/148 topics completed (99%) — see `agent-todo.md` for detailed tracking.
+**Progress:** 156/156 topics completed (100%) — see `agent-todo.md` for detailed tracking.
 
 ---
 
@@ -127,7 +127,7 @@ npm start
 |---------|--------|--------|--------|
 | Design Patterns | ✅ Complete | 23 | `01-design-patterns/` |
 | HLD (High-Level Design) | ✅ Complete | 68 | `02-hld/` |
-| LLD (Low-Level Design) | ✅ Complete | 33+ | `03-lld/` |
+| LLD (Low-Level Design) | ✅ Complete | 50 | `03-lld/` |
 | DSA Patterns | ✅ Complete | 12 | `04-dsa-patterns/` |
 | Concurrency & OS | ✅ Complete | 6 | `05-concurrency-and-os/` |
 | Behavioral & Leadership | ✅ Complete | 5 | `06-behavioral-and-leadership/` |
@@ -246,10 +246,10 @@ See `AGENTS.md` for detailed content guidelines.
 
 ## 📊 Progress Tracking
 
-Current completion: **148/148 topics (100%)**
-
-- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5), Design Patterns (23/23), LLD (33/33)
-- ✅ **Completed:** HLD (69/69)
+Current completion: **156/156 topics (100%)**
+ 
+- ✅ **Completed:** DSA Patterns (12/12), Concurrency & OS (6/6), Behavioral & Leadership (5/5), Design Patterns (23/23), LLD (50/50)
+- ✅ **Completed:** HLD (68/68)
 
 See `agent-todo.md` for detailed breakdown with status for each topic.
 
