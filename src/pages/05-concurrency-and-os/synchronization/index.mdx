@@ -52,16 +52,16 @@ sequenceDiagram
     autonumber
     
     rect rgb(255, 230, 230)
-    note right of Thread A: Race Condition (Unsynchronized)
+    Note right of Thread A: Race Condition (Unsynchronized)
     Thread A->>Memory: Read counter (Value = 10)
     Thread B->>Memory: Read counter (Value = 10)
-    note right of Thread A: Both increment locally to 11
+    Note right of Thread A: Both increment locally to 11
     Thread A->>Memory: Write counter = 11
     Thread B->>Memory: Write counter = 11 (Lost Update!)
     end
     
     rect rgb(230, 255, 230)
-    note right of Thread A: Synchronized Mutex
+    Note right of Thread A: Synchronized Mutex
     Thread A->>Mutex: Acquire Lock (Success)
     Thread A->>Memory: Read counter (Value = 10)
     Thread B->>Mutex: Try Acquire Lock (Blocked / Sleep)

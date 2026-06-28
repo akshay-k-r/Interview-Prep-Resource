@@ -53,6 +53,19 @@ graph TD
         C2 --> L2[Bins/Libs]
         L2 --> A2[App B]
     end
+
+    %% Styles
+    classDef hw fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef hyper fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef vm fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef container fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef app fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+
+    class HW1,HW2 hw;
+    class Hyp1 hyper;
+    class VM1,VM2,OS1,OS2 vm;
+    class OS3,Docker,C1,C2 container;
+    class Lib1,Lib2,L1,L2,App1,App2,A1,A2 app;
 ```
 
 ## Python/Java implementation

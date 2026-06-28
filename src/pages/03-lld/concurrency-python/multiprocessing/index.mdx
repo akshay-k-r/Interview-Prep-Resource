@@ -70,6 +70,15 @@ graph TD
     
     Child Process 1 -->|Send Msg: X=20| P_Queue
     P_Queue -->|Read Msg| Child Process 2
+
+    %% Styles
+    classDef parent fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef child fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef highlight fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+
+    class P_Var,P_Queue parent;
+    class C1_Var,C2_Var child;
+    class C1_Run highlight;
 ```
 
 ---

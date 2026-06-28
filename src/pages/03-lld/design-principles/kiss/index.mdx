@@ -41,6 +41,13 @@ graph TD
         Client2[Client] -->|Map Lookup| Map[HashMap: O_1 time]
         Map -->|Return| Result2[User Object]
     end
+
+    %% Styles
+    classDef over fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef kiss fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+
+    class Client,Ref,Wrap,Filter,Result over;
+    class Client2,Map,Result2 kiss;
 ```
 
 ## Python/Java implementation

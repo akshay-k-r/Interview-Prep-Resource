@@ -55,6 +55,15 @@ graph TD
         D_Exec --> D_Post[Run Post-checks: Cache/Log]
         D_Post --> D_Return[Return Value]
     end
+
+    %% Styles
+    classDef startEnd fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef genState fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef decState fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class G_Start,D_Call,D_Return startEnd;
+    class G_Run,G_Yield,G_Wait genState;
+    class D_Pre,D_Exec,D_Post decState;
 ```
 
 ---

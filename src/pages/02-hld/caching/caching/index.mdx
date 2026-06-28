@@ -65,14 +65,14 @@ graph TD
     subgraph "Cache-Aside Strategy"
         CA_Start[App Read Request] --> CA_Check{Key in Cache?}
         CA_Check -->|"Yes (Hit)"| CA_Return[Return Value]
-        CA_Check -->|"No (Miss)"| CA_ReadDB[Query Database]
+        CA_Check -->|"No (Miss)"| CA_ReadDB[(Query Database)]
         CA_ReadDB --> CA_WriteCache[Write to Cache]
         CA_WriteCache --> CA_Return
     end
 
     subgraph "Write-Through Strategy"
         WT_Start[App Write Request] --> WT_WriteCache[Write to Cache]
-        WT_WriteCache --> WT_WriteDB[Write to Database Synchronously]
+        WT_WriteCache --> WT_WriteDB[(Write to Database Synchronously)]
         WT_WriteDB --> WT_Success[Return Success to App]
     end
 
@@ -80,8 +80,19 @@ graph TD
         WB_Start[App Write Request] --> WB_WriteCache[Write to Cache]
         WB_WriteCache --> WB_Ack[Return Success immediately]
         WB_Ack -.-> WB_Queue[Background Buffer Queue]
-        WB_Queue -.-> WB_WriteDB[Async Batch Write to DB]
+        WB_Queue -.-> WB_WriteDB[(Async Batch Write to DB)]
     end
+
+    %% Styles
+    classDef startEnd fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef cache fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef db fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef check fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+
+    class CA_Start,CA_Return,WT_Start,WT_Success,WB_Start,WB_Ack startEnd;
+    class CA_Check check;
+    class CA_WriteCache,WT_WriteCache,WB_WriteCache,WB_Queue cache;
+    class CA_ReadDB,WT_WriteDB,WB_WriteDB db;
 ```
 
 ---

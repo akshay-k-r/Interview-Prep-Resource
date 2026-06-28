@@ -57,16 +57,27 @@ graph TD
     subgraph "Read Flow (Lazy Loading)"
         R_Start[App Read Request] --> R_Cache{Key in Cache?}
         R_Cache -->|"Yes (Hit)"| R_Return[Return Value]
-        R_Cache -->|"No (Miss)"| R_DB[Query DB]
+        R_Cache -->|"No (Miss)"| R_DB[(Query DB)]
         R_DB --> R_Write[Write to Cache with TTL]
         R_Write --> R_Return
     end
 
     subgraph "Write Flow (Delete-on-Write)"
-        W_Start[App Write Request] --> W_DB[Update Database]
+        W_Start[App Write Request] --> W_DB[(Update Database)]
         W_DB --> W_Evict[Delete Key from Cache]
         W_Evict --> W_Success[Return Success]
     end
+
+    %% Styles
+    classDef startEnd fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef cache fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef db fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef check fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+
+    class R_Start,R_Return,W_Start,W_Success startEnd;
+    class R_Cache check;
+    class R_Write,W_Evict cache;
+    class R_DB,W_DB db;
 ```
 
 ---

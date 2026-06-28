@@ -41,6 +41,15 @@ graph TD
         C6[PartnerController] -->|Uses| VO
         VO -->|Single Regex & Normalization| Truth[Authoritative Source]
     end
+
+    %% Styles
+    classDef wet fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef dry fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef shared fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+
+    class C1,V1,C2,V2,C3,V3 wet;
+    class C4,C5,C6,Truth dry;
+    class VO shared;
 ```
 
 ## Python/Java implementation

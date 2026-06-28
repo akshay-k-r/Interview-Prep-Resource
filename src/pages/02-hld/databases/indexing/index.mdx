@@ -85,9 +85,17 @@ graph TD
         Mem -- Flush to Disk when full --> SST1[SSTable L0 Sorted String Table]
         SST1 -- Background Compaction --> SST2[SSTable L1 Merged/Deduplicated]
     end
-    
-    style Q fill:#f9f,stroke:#333,stroke-width:2px
-    style W fill:#bbf,stroke:#333,stroke-width:2px
+
+    %% Styles
+    classDef readPath fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef writePath fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef queryNode fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef writeNode fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class Root,Inter,Leaf,DataPage readPath;
+    class WAL,Mem,SST1,SST2 writePath;
+    class Q queryNode;
+    class W writeNode;
 ```
 
 ---

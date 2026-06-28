@@ -63,6 +63,19 @@ graph TD
 
     API <--> Klet1
     API <--> Klet2
+
+    %% Styles
+    classDef dev fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef control fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef database fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef worker fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef pod fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+
+    class User dev;
+    class API,Sched,CM control;
+    class etcd database;
+    class Klet1,Klet2,Kpxy1 worker;
+    class Pod1,Pod2,Pod3 pod;
 ```
 
 ## Python/Java implementation

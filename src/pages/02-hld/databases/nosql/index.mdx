@@ -45,17 +45,17 @@ If a relational database is a well-organised filing cabinet with rigid folder st
 flowchart TB
     subgraph Document["Document Store - MongoDB"]
         D1["Collection: Users"]
-        D2["Document: user_id, name, orders array"]
+        D2["Document: { user_id, name, orders: [...] }"]
     end
 
     subgraph KV["Key-Value Store - Redis"]
         K1["Key: session:abc123"]
-        K2["Value: serialised JSON blob"]
+        K2["Value: serialized JSON blob"]
     end
 
     subgraph WC["Wide-Column Store - Cassandra"]
         W1["Row Key: user_id"]
-        W2["Column Family: name, email, last_login..."]
+        W2["Column Family: { name, email, last_login }"]
     end
 
     subgraph Graph["Graph Database - Neo4j"]
@@ -63,6 +63,17 @@ flowchart TB
         G2["Node: User B"]
         G1 -->|FOLLOWS| G2
     end
+
+    %% Styles
+    classDef docStyle fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef kvStyle fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef wcStyle fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef graphStyle fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class D1,D2 docStyle;
+    class K1,K2 kvStyle;
+    class W1,W2 wcStyle;
+    class G1,G2 graphStyle;
 ```
 
 ### Data Distribution in NoSQL
@@ -72,13 +83,22 @@ flowchart LR
     Client["Application"]
     Client --> Router["Partition Router / Coordinator"]
 
-    Router --> N1["Node 1 - Partition A"]
-    Router --> N2["Node 2 - Partition B"]
-    Router --> N3["Node 3 - Partition C"]
+    Router --> N1[("Node 1 - Partition A")]
+    Router --> N2[("Node 2 - Partition B")]
+    Router --> N3[("Node 3 - Partition C")]
 
     N1 -->|Replication| N2
     N2 -->|Replication| N3
     N3 -->|Replication| N1
+
+    %% Styles
+    classDef client fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef router fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef node fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class Client client;
+    class Router router;
+    class N1,N2,N3 node;
 ```
 
 ## Python implementation

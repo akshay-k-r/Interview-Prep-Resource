@@ -47,20 +47,31 @@ Fault tolerance uses multiple replicas, retries, circuit breakers, fallback logi
 
 ```mermaid
 flowchart TD
-    Client["Client Request"]
-    Client --> LB["Load Balancer"]
+    Client["Client Request"] --> LB["Load Balancer"]
 
-    LB --> S1["Service A - Primary"]
-    LB --> S2["Service A - Standby"]
+    LB --> S1["Service A (Primary)"]
+    LB --> S2["Service A (Standby)"]
 
-    S1 --> CB["Circuit Breaker"]
+    S1 --> CB{"Circuit Breaker"}
     CB -->|Closed| ExtSvc["External Service"]
-    CB -->|Open| FB["Fallback - Cached Data"]
+    CB -->|Open| FB["Fallback (Cached Data)"]
 
-    S1 --> DB_Primary["DB Primary"]
-    S2 --> DB_Replica["DB Replica - Hot Standby"]
+    S1 --> DB_Primary[("DB Primary")]
+    S2 --> DB_Replica[("DB Replica (Hot Standby)")]
 
     DB_Primary -->|Sync Replication| DB_Replica
+
+    %% Styles
+    classDef client fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef loadBalancer fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef primary fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef standby fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class Client client;
+    class LB,CB loadBalancer;
+    class S1,ExtSvc,DB_Primary primary;
+    class S2,DB_Replica standby;
+    class FB client;
 ```
 
 ### Failover Sequence
@@ -96,17 +107,27 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    API["API Gateway"]
-    API --> Pool1["Thread Pool 1 - Payment Service"]
-    API --> Pool2["Thread Pool 2 - Catalog Service"]
-    API --> Pool3["Thread Pool 3 - User Service"]
+    API["API Gateway"] --> Pool1["Thread Pool 1 (Payment Service)"]
+    API --> Pool2["Thread Pool 2 (Catalog Service)"]
+    API --> Pool3["Thread Pool 3 (User Service)"]
 
-    Pool1 --> Pay["Payment"]
-    Pool2 --> Cat["Catalog"]
-    Pool3 --> Usr["Users"]
+    Pool1 --> Pay["Payment Service"]
+    Pool2 --> Cat["Catalog Service"]
+    Pool3 --> Usr["User Service"]
 
-    Pay -->|Failure| Pool1
-    Note right of Pool1: Failure isolated. Pool 2 and 3 unaffected.
+    %% Visual representation of failure isolation
+    Pay -.->|x Failure Isolated x| Pool1
+
+    classDef gateway fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef pool fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef svc fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef fail fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+
+    class API gateway;
+    class Pool1 pool;
+    class Pool2,Pool3 pool;
+    class Cat,Usr svc;
+    class Pay fail;
 ```
 
 ## Python implementation

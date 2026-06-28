@@ -48,11 +48,31 @@ Think of building a new house in a suburban neighborhood:
 ### Mendelow's Power-Interest Matrix
 
 ```mermaid
-grid-layout
-    title Mendelow's Power-Interest Grid
-    
-    [Low Interest / Low Power: MONITOR] [High Interest / Low Power: KEEP INFORMED]
-    [Low Interest / High Power: KEEP SATISFIED] [High Interest / High Power: MANAGE CLOSELY]
+flowchart TD
+    subgraph Grid ["Mendelow's Power-Interest Grid"]
+        direction TB
+        subgraph LowPower ["Low Power"]
+            direction LR
+            Monitor["Monitor<br>(Low Interest / Low Power)"]
+            Informed["Keep Informed<br>(High Interest / Low Power)"]
+        end
+        subgraph HighPower ["High Power"]
+            direction LR
+            Satisfied["Keep Satisfied<br>(Low Interest / High Power)"]
+            Manage["Manage Closely<br>(High Interest / High Power)"]
+        end
+    end
+
+    %% Styles
+    classDef monitor fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef informed fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef satisfied fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef manage fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+
+    class Monitor monitor;
+    class Informed informed;
+    class Satisfied satisfied;
+    class Manage manage;
 ```
 
 ---

@@ -45,11 +45,30 @@ The client calls a router/load balancer with a logical name. The router queries 
 *   *Flow:* Client calls Load Balancer $\to$ Load Balancer queries Registry $\to$ Load Balancer routes to Service B.
 *   *Example:* AWS Application Load Balancer (ALB) or Kubernetes Service (kube-proxy / CoreDNS).
 
-```
-Client-Side: Client ---> [Registry] (Reads IPs) ---> Client Load Balancer ---> [Service Instance]
-Server-Side: Client ---> [Load Balancer] ---> [Service Instance]
-                                | (Registry Sync)
-                            [Registry]
+```mermaid
+graph TD
+    subgraph "Client-Side Discovery"
+        C1["Client App"] -->|1. Query Registry| Registry1["Service Registry"]
+        C1 -->|2. Get IPs| Registry1
+        C1 -->|3. Route (Local LB)| Instance1["Service Instance B"]
+    end
+
+    subgraph "Server-Side Discovery"
+        C2["Client App"] -->|1. Request Service B| LB["Router / Load Balancer"]
+        LB <-->|2. Sync / Resolve IPs| Registry2["Service Registry"]
+        LB -->|3. Route| Instance2["Service Instance B"]
+    end
+
+    %% Styles
+    classDef client fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef registry fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef router fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef instance fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+
+    class C1,C2 client;
+    class Registry1,Registry2 registry;
+    class LB router;
+    class Instance1,Instance2 instance;
 ```
 
 ### 3. Self-Registration vs. Third-Party Registration

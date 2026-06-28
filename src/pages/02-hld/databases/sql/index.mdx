@@ -57,15 +57,28 @@ SQL queries are processed through a multi-stage pipeline by the database engine.
 ### Query Execution Pipeline
 
 ```mermaid
-flowchart LR
-    SQL["SQL Query"]
-    SQL --> Parser["Parser - Syntax Check"]
-    Parser --> Binder["Binder - Schema Resolution"]
-    Binder --> Optimiser["Query Optimiser"]
-    Optimiser --> Plan["Execution Plan"]
-    Plan --> Executor["Execution Engine"]
-    Executor --> Storage["Storage Engine - B-tree / Pages"]
-    Storage --> Result["Result Set"]
+flowchart TD
+    subgraph Analysis ["1. Analysis & Optimization"]
+        SQL["SQL Query"] --> Parser["Parser (Syntax Check)"]
+        Parser --> Binder["Binder (Schema Resolution)"]
+        Binder --> Optimiser["Query Optimiser"]
+    end
+
+    subgraph Execution ["2. Execution & Storage"]
+        Optimiser --> Plan["Execution Plan"]
+        Plan --> Executor["Execution Engine"]
+        Executor --> Storage[("Storage Engine (B-tree / Pages)")]
+        Storage --> Result["Result Set"]
+    end
+
+    %% Styles
+    classDef startEnd fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef process fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef db fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+
+    class SQL,Result startEnd;
+    class Parser,Binder,Optimiser,Plan,Executor process;
+    class Storage db;
 ```
 
 ### Table Relationships

@@ -63,12 +63,25 @@ graph TD
     end
 
     subgraph Asynchronous Flush Path
-        F_Trigger[Time Interval or Queue Size Trigger] --> F_Fetch[Drain Dirty Records from Cache]
+        F_Trigger[Time/Size Trigger] --> F_Fetch[Drain Dirty Records]
         F_Fetch --> F_Coalesce[Coalesce / Merge Duplicates]
-        F_Coalesce --> F_DB[Batch Write to Database]
-        F_DB -- Success --> F_Clean[Clear Dirty Flags in Cache]
-        F_DB -- Fail --> F_Retry[Retry / Move to Dead Letter Queue]
+        F_Coalesce --> F_DB[(Batch Write to DB)]
+        F_DB -- Success --> F_Clean[Clear Dirty Flags]
+        F_DB -- Fail --> F_Retry[Retry / Move to DLQ]
     end
+
+    %% Styles
+    classDef startEnd fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef cache fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+    classDef db fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef trigger fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef alert fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+
+    class W_Start,W_Ack startEnd;
+    class W_Cache,W_Mark,F_Fetch,F_Coalesce,F_Clean cache;
+    class F_DB db;
+    class F_Trigger trigger;
+    class F_Retry alert;
 ```
 
 ---

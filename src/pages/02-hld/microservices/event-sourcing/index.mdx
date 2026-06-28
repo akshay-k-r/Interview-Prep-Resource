@@ -72,10 +72,17 @@ graph TD
         Projector --> UpdateView[6. Update Denormalized Query DB]
         Query[Client: View Cart] --> ReadDB[(Query DB: MongoDB/Redis)]
     end
-    
-    style Cmd fill:#f9f,stroke:#333,stroke-width:2px
-    style Append fill:#bbf,stroke:#333,stroke-width:2px
-    style ReadDB fill:#ff9,stroke:#333,stroke-width:2px
+
+    %% Styles
+    classDef client fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#383d41;
+    classDef writeSvc fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef db fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef readSvc fill:#d1ecf1,stroke:#17a2b8,stroke-width:2px,color:#0c5460;
+
+    class Cmd,Query client;
+    class Handler,Load,Replay,Validate,Create writeSvc;
+    class Append,ReadDB db;
+    class Projector,UpdateView readSvc;
 ```
 
 ---

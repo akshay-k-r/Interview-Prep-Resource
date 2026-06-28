@@ -60,16 +60,16 @@ When the circuit is open (or a call fails), the breaker can invoke a fallback fu
 stateDiagram-v2
     [*] --> Closed : Start (Success Rate normal)
     
-    Closed --> Open : Failure Rate > Threshold (e.g. 50% failures)
+    Closed --> Open : Failure Rate > Threshold (e.g., 50% failures)
     note right of Open
         Fail fast immediately.
         Run Fallback code.
     end
     
-    Open --> HalfOpen : Reset Timeout Expired (e.g. after 10 seconds)
+    Open --> HalfOpen : Cooldown Reset Timeout Expired
     
-    HalfOpen --> Closed : Trial Requests Success Rate >= Threshold
-    HalfOpen --> Open : Trial Request Fails (Reset timer)
+    HalfOpen --> Closed : Success Rate >= Threshold (Reset window)
+    HalfOpen --> Open : Any failure / threshold missed (Trip circuit)
 ```
 
 ---
